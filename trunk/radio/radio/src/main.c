@@ -20,6 +20,9 @@ int global_pb_gd=0;
 #include <io.h>
 #include <signal.h>
 #include <iomacros.h>
+
+#include <config.h>
+
 /*
 *********************************************************************************************************
 *                                               CONSTANTS
@@ -46,7 +49,7 @@ OS_STK   TaskStartStk2[TASK_STK_SIZE];
 void   TaskStart(void *data);           /* Function prototypes of Startup task                */
 
 void   TaskStart2(void *data);           /* test task             */
-void   Enable_XT2(void);                /* Enable XT2 and use it as the clock source          */        
+//void   Enable_XT2(void);                /* Enable XT2 and use it as the clock source          */
 
 /*
 *********************************************************************************************************
@@ -126,9 +129,9 @@ InitPorts();
 	
     WDTCTL = WDTPW + WDTHOLD;           /* Disable the watchdog timer   */
 
-  /*  P6SEL = 0x00;                       /* Port1 is set to GPIO         */
-  /*   P6DIR = 0x01;                       /* P1.0 is the only output.     */
-  /*  P6OUT = 0x00;                       /* P1.0 initially low.          */
+  //  P6SEL = 0x00;                       /* Port1 is set to GPIO         */
+  //   P6DIR = 0x01;                       /* P1.0 is the only output.     */
+  //  P6OUT = 0x00;                       /* P1.0 initially low.          */
  
     // TIMERA Configuration             /* Configure TIMERA for the system Tick source. */
     //
@@ -154,7 +157,7 @@ InitPorts();
 
 void  TaskStart (void *pdata)
 { int i,j,k;
-    pdata  = pdata;         /* Prevent compiler warning                 */
+	UNUSED(pdata);//  = pdata;         /* Prevent compiler warning                 */
 
     TACTL |= MC1;           /* Start the Timer in Continuous mode. */
 
@@ -177,7 +180,7 @@ void  TaskStart (void *pdata)
 
 void  TaskStart2 (void *pdata)
 { int i,j,k;
-    pdata  = pdata;         /* Prevent compiler warning                 */
+	UNUSED(pdata);//  = pdata;         /* Prevent compiler warning                 */
 
     while (1) 
     { for(i=0;i<=5;i++){   

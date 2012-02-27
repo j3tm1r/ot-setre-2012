@@ -53,7 +53,7 @@
 
 
 void initDisplay();
-void putc(char c);
+void putch(char c);
 void clearDisplay();
 void printDecimal(int Number);
 void printHex(unsigned int Number);
