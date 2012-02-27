@@ -1,5 +1,8 @@
 /*
 *********************************************************************************************************
+* AUTHORS
+*
+*
 *                                                uC/OS-II
 *                                          The Real-Time Kernel
 *
@@ -53,7 +56,7 @@ void   Enable_XT2(void);                /* Enable XT2 and use it as the clock so
 
 int  main (void)
 {int i,j;
-// début du test du démmarage
+// dï¿½but du test du dï¿½mmarage
 
 #define          STATUS_LED_ON      P2OUT &= ~BIT1    //STATUS_LED - P2.1
 #define          STATUS_LED_OFF     P2OUT |= BIT1     //STATUS_LED - P2.1	
@@ -117,7 +120,7 @@ InitPorts();
 
      
 
-// fin du test du démmarage
+// fin du test du dï¿½mmarage
 
 
 	
