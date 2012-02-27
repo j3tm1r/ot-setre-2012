@@ -82,7 +82,7 @@ minidist:
 FORCE:
 
 #project dependencies
-$(OBJDIR)/app.o : $(SRCDIR)/main.c
+$(OBJDIR)/app.o : $(SRCDIR)/main.c $(SRCDIR)/TraitementInput.c
 	$(CC) $(CFLAGS) -o $@ $<
 	
 $(OBJDIR)/os_cpu_c.o : $(PORTDIR)/os_cpu_c.c
