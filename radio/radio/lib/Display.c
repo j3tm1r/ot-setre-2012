@@ -5,7 +5,7 @@ void initDisplay() {
   InitLCD();
   clearDisplay();
 }
-void putc(char c) {
+void putch(char c) {
     SEND_CHAR(c);
 }
 void clearDisplay() {
@@ -18,7 +18,7 @@ void gotoSecondLine() {
 }
 void printString(char *String) {
   while(*String)
-    putc(*String++);
+    putch(*String++);
 }
 char HexDigit(int digitvalue) {
   if (digitvalue < 10)
