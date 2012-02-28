@@ -8,6 +8,8 @@
 #ifndef TRAITEMENTINPUT_H_
 #define TRAITEMENTINPUT_H_
 
+#include <os_cpu.h>
+
 #define BUT0	0
 #define BUT1	1
 #define BUT2	2

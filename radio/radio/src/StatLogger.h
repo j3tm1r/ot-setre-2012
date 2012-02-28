@@ -8,6 +8,8 @@
 #ifndef STATLOGGER_H_
 #define STATLOGGER_H_
 
+#include <os_cpu.h>
+
 #define STAT_INIT	0
 #define STAT_END	1
 

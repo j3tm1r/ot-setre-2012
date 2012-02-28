@@ -5,4 +5,8 @@
  *      Author: mbbadau
  */
 
+#include "ServiceOutput.h"
 
+void ServiceOutput(void *parg) {
+
+}

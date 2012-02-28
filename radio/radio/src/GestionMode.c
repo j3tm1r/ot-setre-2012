@@ -5,7 +5,7 @@
  copyright            : (C) 2012 par ubunt11
  *************************************************************************/
 
-//---------- Réalisation du module <ModeStateMachine> (fichier ModeStateMachine.c) -----
+//---------- Réalisation du module <GestionMode> (fichier GestionMode.c) -----
 /////////////////////////////////////////////////////////////////  INCLUDE
 //-------------------------------------------------------- Include système
 //------------------------------------------------------ Include personnel

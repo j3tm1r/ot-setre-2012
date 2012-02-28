@@ -1,9 +1,15 @@
-
+/*
+ * Display.h
+ *
+ *  Created on: 28 févr. 2012
+ *      Author: mbbadau
+ */
 
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
 #include <msp430x14x.h>
+#include <os_cpu.h>
 #define PERIOD 1000
 #define HIGH_TIME 50
 #define bitset(var,bitno) ((var) |= 1 << (bitno))
@@ -43,29 +49,30 @@
 
 #define		DISP_ON			0x0c	        //LCD control constants
 #define		DISP_OFF		0x08	        //
-#define		CLR_DISP		0x01    	//
+#define		CLR_DISP		0x01    		//
 #define		CUR_HOME		0x02	        //
 #define		ENTRY_INC		0x06            //
 #define		DD_RAM_ADDR		0x80	        //
-#define		DD_RAM_ADDR2		0xc0	        //
-#define		DD_RAM_ADDR3		0x28	        //
+#define		DD_RAM_ADDR2	0xc0		    //
+#define		DD_RAM_ADDR3	0x28	 	   //
 #define		CG_RAM_ADDR		0x40	        //
 
-
 void initDisplay();
-void putch(char c);
+
 void clearDisplay();
+void gotoSecondLine();
+
+void putch(char c);
 void printDecimal(int Number);
 void printHex(unsigned int Number);
 void printString(char *String);
-void gotoSecondLine();
-void printByte(unsigned int theByte);
+void printByte(INT8U theByte);
 
-void Delay (unsigned long int a);
+void Delay(unsigned long int a);
 
 void Delayx100us(unsigned long int b);
-void SEND_CHAR (unsigned char c);
-void SEND_CMD (unsigned char e);
+void SEND_CHAR(unsigned char c);
+void SEND_CMD(unsigned char e);
 void _E(void);
 void InitLCD(void);
 void InitOsc(void);
