@@ -8,6 +8,8 @@
 #ifndef SERVICE_OUTPUT_H_
 #define SERVICE_OUTPUT_H_
 
+#include <os_cpu.h>
+
 #define SERV_BARGRAPH	0
 #define SERV_EEPROM		1
 #define SERV_FREQ		2
@@ -26,6 +28,9 @@ typedef struct ServiceMsg {
 	};
 
 } ServiceMsg;
+
+
+void ServiceOutput(void *parg);
 
 
 #endif /* SERVICE_OUTPUT_H_ */
