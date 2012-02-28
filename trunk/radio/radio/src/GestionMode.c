@@ -10,6 +10,10 @@
 //-------------------------------------------------------- Include système
 //------------------------------------------------------ Include personnel
 #include "GestionMode.h"
+#include "ServiceOutput.h"
+#include "os_cfg.h"
+#include "includes.h"
+#include "Display.h"
 
 ///////////////////////////////////////////////////////////////////  PRIVE
 //------------------------------------------------------------- Constantes
@@ -65,4 +69,24 @@ void ModeStep(INT16U event) {
 	default:
 		break;
 	}
+}
+
+
+void GestionMode(void *parg) {
+
+		OS_EVENT *msgQServiceOutput = (OS_EVENT*) parg;
+		INT8U err;
+		ServiceMsg data;
+		//printDecimal(20);
+		for(;;) {
+
+			data.serviceType = SERV_LCD;
+			data.val = 33;
+
+			err = OSQPost (msgQServiceOutput, (void *)&data);
+			STATUS_LED_ON;
+			OSTimeDly(2*OS_TICKS_PER_SEC);
+			STATUS_LED_OFF;
+		}
+
 }
