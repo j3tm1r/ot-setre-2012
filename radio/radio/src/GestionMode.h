@@ -43,5 +43,6 @@ typedef struct InputCmd {
 //////////////////////////////////////////////////////////////////  PUBLIC
 //---------------------------------------------------- Fonctions publiques
 void ModeStep(INT16U event);
+void GestionMode(void *parg);
 
 #endif // GESTION_MODE_H
