@@ -224,3 +224,72 @@ void TaskStart2(void *pdata) {
  }
  */
 
+//A placer en début de code aux endroits adéquats
+#include "TraitementInput.h"
+#include "TraitementInput.c"
+#define InputError		4						// Valeur assigné au message en cas d'erreur de lecture pendant les interruptions
+
+interrupt (PORT1_VECTOR) ButtInterrupt(void);
+interrupt (PORT2_VECTOR) TelInterrupt(void);
+
+//todo:PENSER A CONFIGURER LES INTERRUPTIONS ET LES PORTS
+//Pour avoir les pins en interruptions, il faut configurer
+//	P1SEL0 = 0 et P2SEL0 = 0  -> sélection "input/output" (0) au lieu de "périphérique" (1)
+//	P1DIR &= 0b11111110 et P2DIR &= 0b11111110
+//	P1IES0 = 1 et P2IES0 = ? -> savoir si c'est un front montant (0) ou descendant (1)
+//	P1IFG = 0 et P2IFG = 0
+//	il faut utiliser eint(); pour enable global interrupt, P1IE = 1 et P2IE = 1
+interrupt (PORT1_VECTOR) ButtInterrupt(void)
+{
+	INT16U	poll = 0;
+	INT8U	P4Buffer;
+	InputEvent Message;
+
+	//désactiver les interruptions
+	P1IE = 0;
+
+	//remise du sémaphore à 0
+	P1IFG = 0;
+
+	//récupérer les informations des boutons
+	Message.bEvent = 65535;
+	do
+	{
+		P4Buffer = P4IN & 0b11110000;
+
+		if(P4Buffer == 224)		//Bouton 0 appuyé
+			Message.bEvent = 0;
+		if(P4Buffer == 208)		//Bouton 1 appuyé
+			Message.bEvent = 1;
+		if(P4Buffer == 176)		//Bouton 2 appuyé
+			Message.bEvent = 2;
+		if(P4Buffer == 112)		//Bouton 3 appuyé
+			Message.bEvent = 3;
+
+		poll++;
+		if(poll>50)							//Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
+			Message.bEvent = InputError;	//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
+	} while (Message.bEvent == 65535);
+
+	//todo:les transmettre par MailBox ou MessageQueue au TraitementInput
+
+	//réactiver les interruptions
+	P1IE = 1;
+}
+
+//todo: a finir
+interrupt (PORT2_VECTOR) TelInterrupt(void)
+{
+	//désactiver les interruptions
+	P2IE = 0;
+
+	//remise des sémaphores à 0
+	P2IFG = 0;
+
+	//récupération des infos -> lesquelles et comment? Comment marche la liaison série?
+
+	//transmission par MB ou MQ au traitement input
+
+	//réactiver les interruptions
+	P2IE = 1;
+}
