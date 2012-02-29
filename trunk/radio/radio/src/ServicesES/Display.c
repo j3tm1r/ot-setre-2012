@@ -107,7 +107,7 @@ void InitOsc(void) {
 	BCSCTL2 |= SELM0 | SELM1; // set XT1 as MCLK
 }
 
-void InitPorts(void) {
+void InitPortsDisplay(void) {
 	P1SEL = 0; //
 	P1OUT = 0; //
 	P1DIR = BIT5 | BIT6; //enable only Relay outputs

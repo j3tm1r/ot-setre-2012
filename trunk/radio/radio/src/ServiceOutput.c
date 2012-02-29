@@ -43,7 +43,8 @@ void ServiceOutput(void *parg) {
 			case SERV_LCD:
 				clearDisplay();
 				// Parse string '\n' gotoSecondLine() TODO
-				printString(data->msg.pBuffer);
+				printDecimal(data->val);
+				//printString(data->msg.pBuffer);
 				break;
 			case SERV_VOLUME:
 				setVolume(VOLUME_CMD, data->val);
