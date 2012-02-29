@@ -14,13 +14,13 @@
  */
 
 int global_pb_gd = 0;
+int count_int_me;
+
 
 #include <io.h>
 #include <signal.h>
 #include <iomacros.h>
 #include <msp430x14x.h> // a voir si utile
-
-
 #include "includes.h"
 #include "radio_cfg.h"
 #include "GestionMode.h"
@@ -48,14 +48,15 @@ int global_pb_gd = 0;
 //Selection of Port or Module -Function on the Pins 'P1SEL, P2SEL'
 #define P1SEL_INIT      0                       // P1-Modules:
 #define P2SEL_INIT      0                       // P2-Modules:
-
 //Interrupt capabilities of P1 and P2
-#define P1IE_INIT       0                       // Interrupt Enable (0=dis 1=enabled)
+#define P1IE_INIT       1                       // Interrupt Enable (0=dis 1=enabled)
 #define P2IE_INIT       0                       // Interrupt Enable (0=dis 1=enabled)
-#define P1IES_INIT      0                       // Interrupt Edge Select (0=pos 1=neg)
+#define P1IES_INIT      1                       // Interrupt Edge Select (0=pos 1=neg)
 #define P2IES_INIT      0                       // Interrupt Edge Select (0=pos 1=neg)
 #define WDTCTL_INIT     WDTPW|WDTHOLD
 
+//Valeur assigné au message en cas d'erreur de lecture pendant les interruptions
+#define InputError		4
 /*
  *********************************************************************************************************
  *                                               VARIABLES
@@ -79,6 +80,9 @@ void TaskStart(void *data); /* Function prototypes of Startup task              
 void TaskStart2(void *data); /* test task             */
 //void   Enable_XT2(void);                /* Enable XT2 and use it as the clock source          */
 
+interrupt (PORT1_VECTOR) ButtInterrupt(void);
+interrupt (PORT2_VECTOR) TelInterrupt(void);
+
 /*
  *********************************************************************************************************
  *                                                MAIN
@@ -100,13 +104,28 @@ int main(void) {
 
 	P1IES = P1IES_INIT; //init port interrupts
 	P2IES = P2IES_INIT;
-	P1IE = P1IE_INIT;
+	P1IE = 0xff;
 	P2IE = P2IE_INIT;
 // changement au vue de tournier , 3 lignes
 	P2SEL = 0;
 	P2OUT = 0;
 	P2DIR = ~BIT0; //only P2.0 is input
 
+	/*Initialisation ineruptions Buttons et Irda*/
+
+	//Pour avoir les pins en interruptions, il faut configurer
+	P1SEL = 0; //
+	P2SEL = 0; // sélection "input/output" (0) au lieu de "périphérique" (1)
+	P1DIR = ~BIT0;
+	P2DIR = ~BIT0;
+	P1IES = 1;
+	P2IES = 0; //-> savoir si c'est un front montant (0) ou descendant (1)
+	P1IFG = 0;
+	P2IFG = 0;
+	//	il faut utiliser eint(); pour enable global interrupt, P1IE = 1 et P2IE = 1
+	/*Fin initialisation*/
+
+	eint();
 	InitPorts();
 	initDisplay();
 	clearDisplay();
@@ -127,24 +146,23 @@ int main(void) {
 
 	OSInit(); /* Initialize uC/OS-II                     */
 
-
-	//OSTaskCreate(TaskStart, (void *) 0, &TaskStartStk[TASK_STK_SIZE - 1], 0);
-	//OSTaskCreate(TaskStart2, (void *) 5, &TaskStartStk2[TASK_STK_SIZE - 1], 5);
 	/*  P6OUT = 0;*/
 
 	void *CommMsg[10];
 	OS_EVENT *msgQServiceOutput = OSQCreate(&CommMsg[0], 10);
 	INT8U prio = 0;
 
-	OSTaskCreate(GestionMode, (void *) msgQServiceOutput, &TaskStartStk[TASK_STK_SIZE - 1], prio);
+	OSTaskCreate(GestionMode, (void *) msgQServiceOutput,
+			&TaskStartStk[TASK_STK_SIZE - 1], prio);
 
 	prio = 5;
 
-	OSTaskCreate(ServiceOutput, (void *) msgQServiceOutput, &TaskStartStk2[TASK_STK_SIZE - 1], prio);
-
-
-	OSStart(); /* Start multitasking                       */
-
+	OSTaskCreate(ServiceOutput, (void *) msgQServiceOutput,
+			&TaskStartStk2[TASK_STK_SIZE - 1], prio);
+	clearDisplay();
+	printString("Start OS");
+	count_int_me = 0;
+	OSStart();
 	return (0);
 }
 
@@ -154,51 +172,76 @@ int main(void) {
  *********************************************************************************************************
  */
 
-void TaskStart(void *pdata) {
-	int i, j, k;
-	UNUSED(pdata);
-	//  = pdata;         /* Prevent compiler warning                 */
+interrupt (PORT1_VECTOR) ButtInterrupt(void) {
+	INT16U poll = 0;
+	INT8U P4Buffer;
+	InputEvent Message;
+	OS_CPU_SR cpu_sr = 0;
 
-	TACTL |= MC1; /* Start the Timer in Continuous mode. */
+	OS_ENTER_CRITICAL(); /*save cpu status register locally end restore it when finished*/
+	OSIntEnter();
 
-	while (1) {
-		for (i = 0; i <= 5; i++) {
-			//P6OUT = 248>>i;
-			for (j = 1; j < 10000; j++)
-				;
-		}
-		/* Task specific code */
+	//désactiver les interruptions
+	P1IE = 0;
 
-		//  P6OUT ^= 0x01;      /* Toggle the port pin to show signs of life.
-		k++;
-		STATUS_LED_ON;
-		OSTimeDly(OS_TICKS_PER_SEC);
-		printDecimal(1); /* Delay for a bit. */
-		STATUS_LED_OFF;
-	}
+	//remise du sémaphore à 0
+	P1IFG = 0;
+	clearDisplay();
+	printDecimal(count_int_me++);
+	//récupérer les informations des boutons
+//	Message.bEvent = 65535;
+//	do {
+//		P4Buffer = P4IN & 0b11110000;
+//
+//		if (P4Buffer == 224) {
+//			Message.bEvent = 0;
+//			printString("Button 0");
+//
+//		}
+//		if (P4Buffer == 208) {
+//			Message.bEvent = 1;
+//			printString("Button 1");
+//
+//		}
+//		if (P4Buffer == 176) {
+//			Message.bEvent = 2;
+//			printString("Button 2");
+//
+//		}
+//		if (P4Buffer == 112) {
+//			Message.bEvent = 3;
+//			printString("Button 3");
+//
+//		}
+//		poll++;
+//		if (poll > 50) //Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
+//			Message.bEvent = InputError; //On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
+//	} while (Message.bEvent == 65535);
+
+	//todo:les transmettre par MailBox ou MessageQueue au TraitementInput
+
+	//réactiver les interruptions
+	P1IE = 0xFF;
+	OSIntExit();
+	OS_EXIT_CRITICAL();
 }
 
-void TaskStart2(void *pdata) {
-	int i, j, k;
-	UNUSED(pdata);
-	//  = pdata;         /* Prevent compiler warning                 */
+//todo: a finir
+interrupt (PORT2_VECTOR) TelInterrupt(void) {
+	//désactiver les interruptions
+	P2IE = 0;
 
-	while (1) {
-		for (i = 0; i <= 5; i++) {
-			//P6OUT = 248>>i;
-			for (j = 1; j < 10000; j++)
-				;
-		}
-		/* Task specific code */
+	//remise des sémaphores à 0
+	P2IFG = 0;
 
-		//  P6OUT ^= 0x01;      /* Toggle the port pin to show signs of life.
-		k++;
+	//récupération des infos -> lesquelles et comment? Comment marche la liaison série?
 
-		OSTimeDly(OS_TICKS_PER_SEC);
-		printDecimal(2); /* Delay for a bit. */
+	//transmission par MB ou MQ au traitement input
 
-	}
+	//réactiver les interruptions
+	P2IE = 1;
 }
+
 /*
  void Enable_XT2(void)
  {
@@ -223,73 +266,3 @@ void TaskStart2(void *pdata) {
  BCSCTL2 = 0x88;             // Select XT2CLK for MCLK and SMCLK
  }
  */
-
-//A placer en début de code aux endroits adéquats
-#include "TraitementInput.h"
-#include "TraitementInput.c"
-#define InputError		4						// Valeur assigné au message en cas d'erreur de lecture pendant les interruptions
-
-interrupt (PORT1_VECTOR) ButtInterrupt(void);
-interrupt (PORT2_VECTOR) TelInterrupt(void);
-
-//todo:PENSER A CONFIGURER LES INTERRUPTIONS ET LES PORTS
-//Pour avoir les pins en interruptions, il faut configurer
-//	P1SEL0 = 0 et P2SEL0 = 0  -> sélection "input/output" (0) au lieu de "périphérique" (1)
-//	P1DIR &= 0b11111110 et P2DIR &= 0b11111110
-//	P1IES0 = 1 et P2IES0 = ? -> savoir si c'est un front montant (0) ou descendant (1)
-//	P1IFG = 0 et P2IFG = 0
-//	il faut utiliser eint(); pour enable global interrupt, P1IE = 1 et P2IE = 1
-interrupt (PORT1_VECTOR) ButtInterrupt(void)
-{
-	INT16U	poll = 0;
-	INT8U	P4Buffer;
-	InputEvent Message;
-
-	//désactiver les interruptions
-	P1IE = 0;
-
-	//remise du sémaphore à 0
-	P1IFG = 0;
-
-	//récupérer les informations des boutons
-	Message.bEvent = 65535;
-	do
-	{
-		P4Buffer = P4IN & 0b11110000;
-
-		if(P4Buffer == 224)		//Bouton 0 appuyé
-			Message.bEvent = 0;
-		if(P4Buffer == 208)		//Bouton 1 appuyé
-			Message.bEvent = 1;
-		if(P4Buffer == 176)		//Bouton 2 appuyé
-			Message.bEvent = 2;
-		if(P4Buffer == 112)		//Bouton 3 appuyé
-			Message.bEvent = 3;
-
-		poll++;
-		if(poll>50)							//Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
-			Message.bEvent = InputError;	//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
-	} while (Message.bEvent == 65535);
-
-	//todo:les transmettre par MailBox ou MessageQueue au TraitementInput
-
-	//réactiver les interruptions
-	P1IE = 1;
-}
-
-//todo: a finir
-interrupt (PORT2_VECTOR) TelInterrupt(void)
-{
-	//désactiver les interruptions
-	P2IE = 0;
-
-	//remise des sémaphores à 0
-	P2IFG = 0;
-
-	//récupération des infos -> lesquelles et comment? Comment marche la liaison série?
-
-	//transmission par MB ou MQ au traitement input
-
-	//réactiver les interruptions
-	P2IE = 1;
-}
