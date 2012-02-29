@@ -76,6 +76,6 @@ void SEND_CMD(unsigned char e);
 void _E(void);
 void InitLCD(void);
 void InitOsc(void);
-void InitPorts(void);
+void InitPortsDisplay(void);
 
 #endif
