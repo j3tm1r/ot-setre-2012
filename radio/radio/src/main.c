@@ -16,7 +16,6 @@
 int global_pb_gd = 0;
 int count_int_me;
 
-
 #include <io.h>
 #include <signal.h>
 #include <iomacros.h>
@@ -173,57 +172,56 @@ int main(void) {
  */
 
 interrupt (PORT1_VECTOR) ButtInterrupt(void) {
-	INT16U poll = 0;
-	INT8U P4Buffer;
+	INT8U poll = 0;
+	uint8_t P4Buffer;
 	InputEvent Message;
 	OS_CPU_SR cpu_sr = 0;
 
-	OS_ENTER_CRITICAL(); /*save cpu status register locally end restore it when finished*/
-	OSIntEnter();
-
 	//désactiver les interruptions
 	P1IE = 0;
+	OS_ENTER_CRITICAL(); /*save cpu status register locally end restore it when finished*/
+	OSIntEnter();
 
 	//remise du sémaphore à 0
 	P1IFG = 0;
 	clearDisplay();
 	printDecimal(count_int_me++);
 	//récupérer les informations des boutons
-//	Message.bEvent = 65535;
-//	do {
-//		P4Buffer = P4IN & 0b11110000;
-//
-//		if (P4Buffer == 224) {
-//			Message.bEvent = 0;
-//			printString("Button 0");
-//
-//		}
-//		if (P4Buffer == 208) {
-//			Message.bEvent = 1;
-//			printString("Button 1");
-//
-//		}
-//		if (P4Buffer == 176) {
-//			Message.bEvent = 2;
-//			printString("Button 2");
-//
-//		}
-//		if (P4Buffer == 112) {
-//			Message.bEvent = 3;
-//			printString("Button 3");
-//
-//		}
-//		poll++;
-//		if (poll > 50) //Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
-//			Message.bEvent = InputError; //On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
-//	} while (Message.bEvent == 65535);
+	Message.bEvent = 4;
+
+	//while (Message.bEvent == 4)
+	{
+		P4Buffer = P4IN;
+		gotoSecondLine();
+		printString("In");
+		if (!(P4Buffer & 0x10)) {
+			Message.bEvent = 0;
+
+		}
+		if (!(P4Buffer & 0x20)) {
+			Message.bEvent = 1;
+
+		}
+		if (!(P4Buffer & 0x40)) {
+			Message.bEvent = 2;
+
+		}
+		if (!(P4Buffer & 0x80)) {
+			Message.bEvent = 3;
+		}
+
+		//Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
+		//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
+	}
+	printDecimal(Message.bEvent);
+	printByte(P4IN);
 
 	//todo:les transmettre par MailBox ou MessageQueue au TraitementInput
 
-	//réactiver les interruptions
-	P1IE = 0xFF;
 	OSIntExit();
 	OS_EXIT_CRITICAL();
+	//réactiver les interruptions
+	P1IE = 0xFF;
 }
 
 //todo: a finir
