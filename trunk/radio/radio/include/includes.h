@@ -10,6 +10,9 @@
 *********************************************************************************************************
 */
 
+#ifndef INCLUDES_H
+#define INCLUDES_H
+
 #include    <stdio.h>
 #include    <string.h>
 #include    <ctype.h>
@@ -22,3 +25,6 @@
 #include    <io.h>
 #include    <iomacros.h>
 
+#include	"radio_cfg.h"
+
+#endif
