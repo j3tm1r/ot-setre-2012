@@ -77,7 +77,7 @@ void GestionMode(void *parg) {
 		OS_EVENT *msgQServiceOutput = (OS_EVENT*) parg;
 		INT8U err;
 		ServiceMsg data;
-		//printDecimal(20);
+
 		for(;;) {
 
 			data.serviceType = SERV_LCD;

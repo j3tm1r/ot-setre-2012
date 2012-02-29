@@ -15,6 +15,9 @@
 *********************************************************************************************************
 */
 
+#ifndef OS_CPU_H
+#define OS_CPU_H
+
 #ifdef  OS_CPU_GLOBALS
 #define OS_CPU_EXT
 #else
@@ -104,3 +107,5 @@ OS_CPU_EXT  OS_STK  *OSISRStkPtr;                    /* Pointer to top-of ISR st
 
 OS_CPU_SR  OSCPUSaveSR(void);
 void       OSCPURestoreSR(OS_CPU_SR cpu_sr);
+
+#endif //OS_CPU_H

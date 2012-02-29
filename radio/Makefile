@@ -9,11 +9,12 @@ RTOSDIR         = ./os/ucosII
 PORTDIR         = ./os/port/MSP430/F1611/GNU
 
 SRCDIR		= ./radio/src
-LIBDIRS 	= ./radio/lib
+SERVDIR		= ./radio/src/ServicesES
+#LIBDIRS 	=
 RADIODIR	= ./radio/include
 
 
-INCDIR		= -I./ -I$(RTOSDIR) -I$(PORTDIR) -I$(LIBDIRS) -I$(RADIODIR)
+INCDIR		= -I./ -I$(RTOSDIR) -I$(PORTDIR) -I$(RADIODIR) -I$(SERVDIR)
 
 OBJECTS         = $(OBJDIR)/app.o			\
                   $(OBJDIR)/os_cpu_a.o		\
@@ -26,8 +27,13 @@ OBJECTS         = $(OBJDIR)/app.o			\
                   $(OBJDIR)/os_q.o			\
                   $(OBJDIR)/os_sem.o		\
                   $(OBJDIR)/os_task.o		\
-                  $(OBJDIR)/os_time.o	\
-		  $(LIBDIRS)/Display.o
+                  $(OBJDIR)/os_time.o		\
+		    	  $(OBJDIR)/Display.o		\
+		  		  $(OBJDIR)/ServiceOutput.o \
+		  		  $(OBJDIR)/GestionMode.o	\
+		  		  $(OBJDIR)/StatLogger.o 	\
+		  		  $(OBJDIR)/TraitementInput.o
+		  		  
                   
 CPU             = msp430x149
 CFLAGS          = -mmcu=${CPU} $(INCDIR) -Wall -c -g -v
@@ -82,8 +88,26 @@ minidist:
 FORCE:
 
 #project dependencies
-$(OBJDIR)/app.o : $(SRCDIR)/main.c $(SRCDIR)/TraitementInput.c
+
+$(OBJDIR)/app.o : $(SRCDIR)/main.c
 	$(CC) $(CFLAGS) -o $@ $<
+	
+$(OBJDIR)/Display.o : $(SERVDIR)/Display.c
+	$(CC) $(CFLAGS) -o $@ $<
+	
+$(OBJDIR)/ServiceOutput.o : $(SRCDIR)/ServiceOutput.c
+	$(CC) $(CFLAGS) -o $@ $<
+	
+$(OBJDIR)/GestionMode.o : $(SRCDIR)/GestionMode.c
+	$(CC) $(CFLAGS) -o $@ $<
+	
+$(OBJDIR)/StatLogger.o : $(SRCDIR)/StatLogger.c
+	$(CC) $(CFLAGS) -o $@ $<
+	
+$(OBJDIR)/TraitementInput.o : $(SRCDIR)/TraitementInput.c
+	$(CC) $(CFLAGS) -o $@ $<
+	
+#################################	
 	
 $(OBJDIR)/os_cpu_c.o : $(PORTDIR)/os_cpu_c.c
 	$(CC) $(CFLAGS) -o $@ $<
