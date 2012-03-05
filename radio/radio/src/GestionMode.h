@@ -18,6 +18,7 @@
 /////////////////////////////////////////////////////////////////  INCLUDE
 //--------------------------------------------------- Interfaces utilisées
 #include <os_cpu.h>
+#include <ucos_ii.h>
 
 //------------------------------------------------------------- Constantes
 #define VEILLE		0
@@ -35,6 +36,12 @@
 #define MR_FIN_ACK	5
 
 //------------------------------------------------------------------ Types 
+
+typedef struct task_GM_Param {
+	OS_EVENT *TI_To_GM_MsgQ;
+	OS_EVENT *GM_To_SO_MsgQ;
+	OS_EVENT *GM_To_SL_MsgQ;
+} task_GM_Param;
 
 typedef struct InputCmd {
 	INT16U cmdID;

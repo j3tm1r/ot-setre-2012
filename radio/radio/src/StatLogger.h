@@ -21,4 +21,6 @@ typedef struct StatMsg {
 	};
 } StatMsg;
 
+void StatLogger(void *parg);
+
 #endif /* STATLOGGER_H_ */

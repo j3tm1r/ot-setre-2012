@@ -74,19 +74,34 @@ void ModeStep(INT16U event) {
 
 void GestionMode(void *parg) {
 
-		OS_EVENT *msgQServiceOutput = (OS_EVENT*) parg;
+		task_GM_Param *param = (task_GM_Param*) parg;
+		OS_EVENT *TI_To_GM_MsgQ = param->TI_To_GM_MsgQ;
+		OS_EVENT *GM_To_SO_MsgQ = param->GM_To_SO_MsgQ;
+		OS_EVENT *GM_To_SL_MsgQ = param->GM_To_SL_MsgQ;
+
 		INT8U err;
-		ServiceMsg data;
+		InputCmd *recData;
+		ServiceMsg sendData;
+		//data.val = 0;
 
 		for(;;) {
 
-			data.serviceType = SERV_LCD;
-			data.val = 33;
+			recData = (InputCmd*) OSQPend (TI_To_GM_MsgQ, 0, &err);
 
-			err = OSQPost (msgQServiceOutput, (void *)&data);
+			gotoSecondLine();
+			printString("GM");
+			printDecimal(recData->cmdID);
+
+			/*data.val++;
+			data.serviceType = SERV_LCD;
+
+			err = OSQPost (msgQServiceOutput, (void *)&data);*/
 			STATUS_LED_ON;
+
 			OSTimeDly(2*OS_TICKS_PER_SEC);
+
 			STATUS_LED_OFF;
+
 		}
 
 }

@@ -30,6 +30,7 @@ void ServiceOutput(void *parg) {
 
 		for (;;) {
 
+
 			data = (ServiceMsg*) OSQPend (msgQServiceOutput, 0, &err);
 
 			switch(data->serviceType) {
@@ -42,7 +43,9 @@ void ServiceOutput(void *parg) {
 				break;
 			case SERV_LCD:
 				clearDisplay();
+				//gotoSecondLine();
 				// Parse string '\n' gotoSecondLine() TODO
+				printString("SO:");
 				printDecimal(data->val);
 				//printString(data->msg.pBuffer);
 				break;
@@ -53,6 +56,7 @@ void ServiceOutput(void *parg) {
 				// Error
 				break;
 			}
+
 		}
 
 }

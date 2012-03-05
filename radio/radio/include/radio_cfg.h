@@ -84,18 +84,18 @@
 #define			SEL_OFF				P6OUT &= ~BIT7     	//P6.7
 
 #define			P20_ON				P2OUT |= BIT0     	//P2.0
-#define			P20_OFF			P2OUT &= ~BIT0     	//P2.0
+#define			P20_OFF				P2OUT &= ~BIT0     	//P2.0
 #define			TXD0_ON				P3OUT |= BIT4     	//P3.4
 #define			TXD0_OFF			P3OUT &= ~BIT4     	//P3.4
 
 #define		DISP_ON			0x0c	        //LCD control constants
 #define		DISP_OFF		0x08	        //
-#define		CLR_DISP		0x01    	//
+#define		CLR_DISP		0x01    		//
 #define		CUR_HOME		0x02	        //
 #define		ENTRY_INC		0x06            //
 #define		DD_RAM_ADDR		0x80	        //
-#define		DD_RAM_ADDR2		0xc0	        //
-#define		DD_RAM_ADDR3		0x28	        //
+#define		DD_RAM_ADDR2	0xc0	        //
+#define		DD_RAM_ADDR3	0x28	        //
 #define		CG_RAM_ADDR		0x40	        //
 
 #endif /* CONFIG_H_ */

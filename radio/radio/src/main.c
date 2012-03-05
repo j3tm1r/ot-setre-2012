@@ -42,7 +42,6 @@ int count_int_me;
 #define P1OUT_INIT      0                       // Init Output data of port1
 #define P2OUT_INIT      0                       // Init Output data of port2
 //Port Direction Register 'P1DIR, P2DIR':
-#define P1DIR_INIT      0xff                    // Init of Port1 Data-Direction Reg (Out=1 / Inp=0)
 #define P2DIR_INIT      0xff                    // Init of Port2 Data-Direction Reg (Out=1 / Inp=0)
 //Selection of Port or Module -Function on the Pins 'P1SEL, P2SEL'
 #define P1SEL_INIT      0                       // P1-Modules:
@@ -56,17 +55,23 @@ int count_int_me;
 
 //Valeur assigné au message en cas d'erreur de lecture pendant les interruptions
 #define InputError		4
+
+#define	MSG_Q_SIZE		10
 /*
  *********************************************************************************************************
  *                                               VARIABLES
  *********************************************************************************************************
  */
 
-OS_STK TaskStartStk[TASK_STK_SIZE];
-OS_STK TaskStartStk2[TASK_STK_SIZE];
+static OS_STK StkTraitementInput[TASK_STK_SIZE];
+static OS_STK StkGestionMode[TASK_STK_SIZE];
+static OS_STK StkServiceOutput[TASK_STK_SIZE];
+static OS_STK StkLoggerStat[TASK_STK_SIZE];
 
-OS_STK StkServiceOutput;
-OS_STK StkGestionMode;
+OS_EVENT *ISR_To_TI_MsgQ;
+OS_EVENT *TI_To_GM_MsgQ;
+OS_EVENT *GM_To_SO_MsgQ;
+OS_EVENT *GM_To_SL_MsgQ;
 
 /*
  *********************************************************************************************************
@@ -74,11 +79,7 @@ OS_STK StkGestionMode;
  *********************************************************************************************************
  */
 
-void TaskStart(void *data); /* Function prototypes of Startup task                */
-
-void TaskStart2(void *data); /* test task             */
 //void   Enable_XT2(void);                /* Enable XT2 and use it as the clock source          */
-
 interrupt (PORT1_VECTOR) ButtInterrupt(void);
 interrupt (PORT2_VECTOR) TelInterrupt(void);
 
@@ -99,11 +100,10 @@ int main(void) {
 	P6SEL = P2SEL_INIT; //Select port or module -function on port2
 
 	P6DIR = P1DIR_INIT; //Init port direction register of port1
-	P6DIR = P2DIR_INIT; //Init port direction register of port2
 
 	P1IES = P1IES_INIT; //init port interrupts
 	P2IES = P2IES_INIT;
-	P1IE = ~BIT0;
+
 	P2IE = P2IE_INIT;
 // changement au vue de tournier , 3 lignes
 	P2SEL = 0;
@@ -115,16 +115,17 @@ int main(void) {
 	//Pour avoir les pins en interruptions, il faut configurer
 	P1SEL = 0; //
 	P2SEL = 0; // sélection "input/output" (0) au lieu de "périphérique" (1)
+
 	P1DIR = 0x00;
 	P2DIR = 0x00;
-	P1IES = 1;
+	P1IES = 0xFF;
+
 	P2IES = 0; //-> savoir si c'est un front montant (0) ou descendant (1)
 	P1IFG = 0;
 	P2IFG = 0;
 	//	il faut utiliser eint(); pour enable global interrupt, P1IE = 1 et P2IE = 1
 	/*Fin initialisation*/
 
-	eint();
 	InitPortsDisplay();
 	initDisplay();
 	clearDisplay();
@@ -132,35 +133,60 @@ int main(void) {
 
 	WDTCTL = WDTPW + WDTHOLD; /* Disable the watchdog timer   */
 
-	//  P6SEL = 0x00;                       /* Port1 is set to GPIO         */
-	//   P6DIR = 0x01;                       /* P1.0 is the only output.     */
-	//  P6OUT = 0x00;                       /* P1.0 initially low.          */
-
 	// TIMERA Configuration             /* Configure TIMERA for the system Tick source. */
 	//
 	TACTL = TASSEL1 + TACLR; /* Clear the Timer and set SMCLK as the source. */
-	TACTL |= 0x00C0; /* Input divider is /8.  		*/
+	TACTL |= 0x00C0; /* Input divider is /8.  */
 	TACCTL0 = CCIE; /* Enable the TACCR0 interrupt. */
-	TACCR0 = 2304; /* Load the TACCR0 register.    	*/
+	TACCR0 = 913; /* Load the TACCR0 register. Value must be defined by testing */
 
-	OSInit(); /* Initialize uC/OS-II                     */
 
-	/*  P6OUT = 0;*/
 
-	void *CommMsg[10];
-	OS_EVENT *msgQServiceOutput = OSQCreate(&CommMsg[0], 10);
-	INT8U prio = 0;
 
-	OSTaskCreate(GestionMode, (void *) msgQServiceOutput,
-			&TaskStartStk[TASK_STK_SIZE - 1], prio);
 
-	prio = 5;
+	OSInit(); /* Initialize uC/OS-II */
 
-	OSTaskCreate(ServiceOutput, (void *) msgQServiceOutput,
-			&TaskStartStk2[TASK_STK_SIZE - 1], prio);
+	void *ISR_To_TI_Buffer[MSG_Q_SIZE];
+	void *TI_To_GM_Buffer[MSG_Q_SIZE];
+	void *GM_To_SO_Buffer[MSG_Q_SIZE];
+	void *GM_To_SL_Buffer[MSG_Q_SIZE];
+
+	ISR_To_TI_MsgQ = OSQCreate(&ISR_To_TI_Buffer[0], MSG_Q_SIZE);
+	TI_To_GM_MsgQ = OSQCreate(&TI_To_GM_Buffer[0], MSG_Q_SIZE);
+	GM_To_SO_MsgQ = OSQCreate(&GM_To_SO_Buffer[0], MSG_Q_SIZE);
+	GM_To_SL_MsgQ = OSQCreate(&GM_To_SL_Buffer[0], MSG_Q_SIZE);
+
+	INT8U prio = 20;
+	task_TI_Param tiParam;
+	tiParam.ISR_To_TI_MsgQ = ISR_To_TI_MsgQ;
+	tiParam.TI_To_GM_MsgQ = TI_To_GM_MsgQ;
+	prio = 6; // most important priority
+	OSTaskCreate(TraitementInput, (void *) &tiParam,
+			&StkTraitementInput[TASK_STK_SIZE - 1], prio);
+
+	task_GM_Param gmParam;
+	gmParam.GM_To_SL_MsgQ = GM_To_SL_MsgQ;
+	gmParam.GM_To_SO_MsgQ = GM_To_SO_MsgQ;
+	gmParam.TI_To_GM_MsgQ = TI_To_GM_MsgQ;
+	prio = 9;
+	OSTaskCreate(GestionMode, (void *) &gmParam,
+			&StkGestionMode[TASK_STK_SIZE - 1], prio);
+
+	prio = 11;
+	OSTaskCreate(ServiceOutput, (void *) GM_To_SO_MsgQ,
+			&StkServiceOutput[TASK_STK_SIZE - 1], prio);
+
+	prio = 13;
+	OSTaskCreate(StatLogger, (void *) GM_To_SL_MsgQ,
+			&StkLoggerStat[TASK_STK_SIZE - 1], prio);
+
 	clearDisplay();
 	printString("Start OS");
 	count_int_me = 0;
+
+	P1IE = ~BIT0;
+	eint();
+	TACTL |= MC1;           /* Start the Timer in Continuous mode. */
 	OSStart();
 	return (0);
 }
@@ -172,55 +198,66 @@ int main(void) {
  */
 
 interrupt (PORT1_VECTOR) ButtInterrupt(void) {
-	INT8U poll = 0;
-	uint8_t P4Buffer;
-	InputEvent Message;
+
+	INT8U P4Buffer;
+	InputEvent msg;
 	OS_CPU_SR cpu_sr = 0;
 
 	//désactiver les interruptions
 	P1IE = 0;
-	OS_ENTER_CRITICAL(); /*save cpu status register locally end restore it when finished*/
-	//OSIntEnter();
+	OS_ENTER_CRITICAL(); //save cpu status register locally end restore it when finished
+	OSIntEnter();
 
-	//remise du sémaphore à 0
-	P1IFG = 0;
 	//récupérer les informations des boutons
 	Delayx100us(10);
-	Message.bEvent = 4;
+
+	msg.msgType = IT_BUTTON;
+	msg.bEvent = BUTERR;
 
 	//while (Message.bEvent == 4)
 	{
 		P4Buffer = P4IN;
+
 		if (!(P4Buffer & 0x10)) {
-			Message.bEvent = 0;
+			msg.bEvent = BUT0;
+			//break;
 
 		}
 		if (!(P4Buffer & 0x20)) {
-			Message.bEvent = 1;
+			msg.bEvent = BUT1;
+			//break;
 
 		}
 		if (!(P4Buffer & 0x40)) {
-			Message.bEvent = 2;
+			msg.bEvent = BUT2;
+			//break;
 
 		}
 		if (!(P4Buffer & 0x80)) {
-			Message.bEvent = 3;
+			msg.bEvent = BUT3;
+			//	break;
 		}
-
 		//Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
 		//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
 	}
-	clearDisplay();
-	printDecimal(Message.bEvent);
-	gotoSecondLine();
-	printByte(P4IN);
 
+	clearDisplay();
+	printDecimal(msg.bEvent);
+	gotoSecondLine();
+	printByte(P4Buffer);
 	//todo:les transmettre par MailBox ou MessageQueue au TraitementInput
 
-	//OSIntExit();
+	//INT8U err =
+	OSQPost(ISR_To_TI_MsgQ, (void *) &msg);
+
+	OSIntExit();
 	OS_EXIT_CRITICAL();
+
+	//remise du sémaphore à 0
+	P1IFG = 0;
 	//réactiver les interruptions
 	P1IE = 0xFF;
+
 }
 
 //todo: a finir
