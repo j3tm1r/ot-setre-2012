@@ -103,7 +103,7 @@ int main(void) {
 
 	P1IES = P1IES_INIT; //init port interrupts
 	P2IES = P2IES_INIT;
-	P1IE = 0xff;
+	P1IE = ~BIT0;
 	P2IE = P2IE_INIT;
 // changement au vue de tournier , 3 lignes
 	P2SEL = 0;
@@ -115,8 +115,8 @@ int main(void) {
 	//Pour avoir les pins en interruptions, il faut configurer
 	P1SEL = 0; //
 	P2SEL = 0; // sélection "input/output" (0) au lieu de "périphérique" (1)
-	P1DIR = ~BIT0;
-	P2DIR = ~BIT0;
+	P1DIR = 0x00;
+	P2DIR = 0x00;
 	P1IES = 1;
 	P2IES = 0; //-> savoir si c'est un front montant (0) ou descendant (1)
 	P1IFG = 0;
@@ -125,7 +125,7 @@ int main(void) {
 	/*Fin initialisation*/
 
 	eint();
-	InitPorts();
+	InitPortsDisplay();
 	initDisplay();
 	clearDisplay();
 	printString("Starting");
@@ -180,20 +180,17 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 	//désactiver les interruptions
 	P1IE = 0;
 	OS_ENTER_CRITICAL(); /*save cpu status register locally end restore it when finished*/
-	OSIntEnter();
+	//OSIntEnter();
 
 	//remise du sémaphore à 0
 	P1IFG = 0;
-	clearDisplay();
-	printDecimal(count_int_me++);
 	//récupérer les informations des boutons
+	Delayx100us(10);
 	Message.bEvent = 4;
 
 	//while (Message.bEvent == 4)
 	{
 		P4Buffer = P4IN;
-		gotoSecondLine();
-		printString("In");
 		if (!(P4Buffer & 0x10)) {
 			Message.bEvent = 0;
 
@@ -213,12 +210,14 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 		//Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
 		//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
 	}
+	clearDisplay();
 	printDecimal(Message.bEvent);
+	gotoSecondLine();
 	printByte(P4IN);
 
 	//todo:les transmettre par MailBox ou MessageQueue au TraitementInput
 
-	OSIntExit();
+	//OSIntExit();
 	OS_EXIT_CRITICAL();
 	//réactiver les interruptions
 	P1IE = 0xFF;
