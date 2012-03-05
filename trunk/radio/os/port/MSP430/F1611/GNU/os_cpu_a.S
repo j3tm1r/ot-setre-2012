@@ -249,7 +249,7 @@ interrupt(TIMERA0_VECTOR)
 TA0_ISR:                                    /* TIMERA0 timer ISR */
             PUSHALL
                         
-            add.w	 #2304, &TACCR0			/* Reset the Timer Period*/
+            add.w	 #913, &TACCR0			/* Reset the Timer Period*/
                          
             cmp.b    #0, &OSIntNesting      /* if (OSIntNesting == 0)  */
             jne      L1
