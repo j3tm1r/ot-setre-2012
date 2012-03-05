@@ -11,7 +11,7 @@
 
 void initDisplay() {
 	InitOsc();
-	InitPorts();
+	InitPortsDisplay();
 	InitLCD();
 	clearDisplay();
 }
