@@ -4,6 +4,7 @@
  *  Created on: 28 févr. 2012
  *      Author: mbbadau
  */
+#include <string.h>
 
 #include "ServiceOutput.h"
 #include "Display.h"
@@ -25,11 +26,24 @@ static INT16U stationMap[] = {
 	765,
 	828
 };
+// Volume
+static INT16U volumeMap[] = {
+	0,
+	32,
+	64,
+	96,
+	128,
+	160,
+	192,
+	224,
+	255
+};
 
 
 // Declarations
 // Services
 void  setFrequencyById(INT8U freqId);
+void  setVolumeByLvl(INT8U volLvl);
 INT8S setFrequency(INT16U nb);
 INT8S setVolume(INT8U cmd, INT8U nb);
 
@@ -57,28 +71,33 @@ void ServiceOutput(void *parg) {
 				break;
 			case SERV_LCD:
 				clearDisplay();
-				//gotoSecondLine();
-				// Parse string '\n' gotoSecondLine() TODO
-				printString("SO:");
-				printDecimal(data->val);
-
 				char *str = data->msg.pBuffer;
 				char screenBuffer[N_CHAR_PER_LINE * N_LINE + 2];	// count '\0' and '\n'
-				INT8U strLen = data->msg.size;
+				INT8U strLen = strlen(str);//data->msg.size;
 				int i = 0;
-				while(i < strLen) {
-					if(str[i] != '\n') {
-						screenBuffer[i] = str[i];
+				int j = 0;
+				while(i < strLen + 1) {
+					if(str[i] == '\n') {
+//						if(i > N_CHAR_PER_LINE) {
+//							// '\n' must be before end of first line
+//							break;
+//						}
+						screenBuffer[j] = '\0';
+						printString(screenBuffer);
+						gotoSecondLine();
+						j = 0;
+					} else if (str[i] == '\0') {
+						screenBuffer[j] = '\0';
+						printString(screenBuffer);
+					} else {
+						screenBuffer[j] = str[i];
+						++j;
 					}
+					++i;
 				}
-
-				//printString(data->msg.pBuffer);
 				break;
 			case SERV_VOLUME:
-				//setVolume(VOLUME_CMD, data->val);
-				clearDisplay();
-				printString("SO :");
-				printDecimal(data->val);
+				setVolumeByLvl(data->val);
 				break;
 			default:
 				// Error
@@ -110,6 +129,11 @@ INT8S setFrequency(INT16U nb) {
 	sendOverSPI(SPI_FREQ, data, 12);
 
 	return 0;
+}
+
+void  setVolumeByLvl(INT8U volLvl) {
+	INT16U volume = volumeMap[ volLvl % VOL_NUM];
+	setVolume(VOLUME_CMD, volume);
 }
 
 INT8S setVolume(INT8U cmd, INT8U nb) {

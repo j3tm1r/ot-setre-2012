@@ -9,6 +9,8 @@
 /////////////////////////////////////////////////////////////////  INCLUDE
 //-------------------------------------------------------- Include système
 //------------------------------------------------------ Include personnel
+#include <string.h>
+
 #include "GestionMode.h"
 #include "ServiceOutput.h"
 #include "StatLogger.h"
@@ -241,6 +243,7 @@ void GestionRadio(INT16U event) {
 
 void GestionMode(void *parg) {
 
+	char str[] = "Bonjour!123456789\nCo..";
 	task_GM_Param *param = (task_GM_Param*) parg;
 	TI_To_GM_MsgQ = param->TI_To_GM_MsgQ;
 	GM_To_SO_MsgQ = param->GM_To_SO_MsgQ;
@@ -273,6 +276,7 @@ void GestionMode(void *parg) {
 			serviceData.serviceType = SERV_FREQ;
 			serviceData.val = currentFreqId;
 			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
+
 			// Set volume
 			serviceData.serviceType = SERV_VOLUME;
 			serviceData.val = currentVolLvl;
@@ -287,6 +291,12 @@ void GestionMode(void *parg) {
 			statData.msgType = STAT_LOG;
 			statData.volumeLvl = currentVolLvl;
 			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+
+			serviceData.serviceType = SERV_LCD;
+			serviceData.msg.pBuffer = (void *)str;
+			serviceData.msg.size = strlen(str);
+			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
+
 			break;
 		case MR:
 			// Transfer event to GestionRadio
