@@ -29,7 +29,7 @@
 								<inputType id="org.eclipse.cdt.build.core.settings.holder.inType.1929084295" languageId="org.eclipse.cdt.core.g++" languageName="GNU C++" sourceContentType="org.eclipse.cdt.core.cxxSource,org.eclipse.cdt.core.cxxHeader" superClass="org.eclipse.cdt.build.core.settings.holder.inType"/>
 							</tool>
 							<tool id="org.eclipse.cdt.build.core.settings.holder.1800123408" name="GNU C" superClass="org.eclipse.cdt.build.core.settings.holder">
-								<option id="org.eclipse.cdt.build.core.settings.holder.incpaths.863070727" superClass="org.eclipse.cdt.build.core.settings.holder.incpaths" valueType="includePath">
+								<option id="org.eclipse.cdt.build.core.settings.holder.incpaths.863070727" name="Include Paths" superClass="org.eclipse.cdt.build.core.settings.holder.incpaths" valueType="includePath">
 									<listOptionValue builtIn="false" value="/usr/local/msp430-gcc-4.4.4/msp430/include"/>
 									<listOptionValue builtIn="false" value="/usr/local/msp430-gcc-4.4.4/msp430/include/bits"/>
 									<listOptionValue builtIn="false" value="/usr/local/msp430-gcc-4.4.4/msp430/include/msp430"/>

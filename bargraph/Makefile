@@ -32,6 +32,7 @@ OBJECTS         = $(OBJDIR)/app.o			\
 		  		  $(OBJDIR)/ServiceOutput.o \
 		  		  $(OBJDIR)/GestionMode.o	\
 		  		  $(OBJDIR)/StatLogger.o 	\
+		  		  $(OBJDIR)/BarGraph.o		\
 		  		  $(OBJDIR)/TraitementInput.o
 		  		  
                   
@@ -95,6 +96,9 @@ $(OBJDIR)/app.o : $(SRCDIR)/main.c
 $(OBJDIR)/Display.o : $(SERVDIR)/Display.c
 	$(CC) $(CFLAGS) -o $@ $<
 	
+$(OBJDIR)/BarGraph.o : $(SERVDIR)/BarGraph.c
+	$(CC) $(CFLAGS) -o $@ $<
+
 $(OBJDIR)/ServiceOutput.o : $(SRCDIR)/ServiceOutput.c
 	$(CC) $(CFLAGS) -o $@ $<
 	

@@ -27,6 +27,7 @@ int count_int_me;
 #include "StatLogger.h"
 #include "TraitementInput.h"
 #include "Display.h"
+#include "BarGraph.h"
 
 /*
  *********************************************************************************************************
@@ -67,6 +68,9 @@ static OS_STK StkTraitementInput[TASK_STK_SIZE];
 static OS_STK StkGestionMode[TASK_STK_SIZE];
 static OS_STK StkServiceOutput[TASK_STK_SIZE];
 static OS_STK StkLoggerStat[TASK_STK_SIZE];
+
+static unsigned char segment;
+static unsigned char etat;
 
 OS_EVENT *ISR_To_TI_MsgQ;
 OS_EVENT *TI_To_GM_MsgQ;
@@ -180,6 +184,10 @@ int main(void) {
 	printString("Start OS");
 	count_int_me = 0;
 
+	/*Bargraph init*/
+	etat = 0;
+	segment = 0;
+
 	P1IE = ~BIT0;
 	eint();
 	TACTL |= MC1; /* Start the Timer in Continuous mode. */
@@ -220,12 +228,17 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 	}
 	if (!(P4Buffer & 0x40)) {
 		msg.bEvent = BUT2;
+		PRINT_BAR(segment++,1);
 	}
 	if (!(P4Buffer & 0x80)) {
 		msg.bEvent = BUT3;
+		PRINT_BAR(segment--,0);
 	}
 	//Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
 	//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
+
+	if(segment < 0) segment = 0;
+	if(segment > 8) segment = 8;
 
 
 	if (msg.bEvent != BUTERR) {
