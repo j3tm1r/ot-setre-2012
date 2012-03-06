@@ -45,12 +45,16 @@
 //---------------------------------------------------- Variables statiques
 // GestionMode State Machine
 static INT16U mode = VEILLE;
+
+//// GESTION STATISTIQUES
 // GestionStat State Machine
 static INT16U modeStat = MS_NB_UTIL;
+
+//// GESTION RADIO
 // GestionRadio State Machine
 static INT16U modeRadio = MR_DEFAULT;
-static INT8S  volStateCounter = 0;
-static INT8S  freqStateCounter = 0;
+static INT8S volStateCounter = 0;
+static INT8S freqStateCounter = 0;
 
 static INT8S currentFreqId = DEFAULT_FREQ_ID;
 static INT8S currentVolLvl = DEFAULT_VOL_LVL;
@@ -59,8 +63,15 @@ static OS_EVENT *TI_To_GM_MsgQ;
 static OS_EVENT *GM_To_SO_MsgQ;
 static OS_EVENT *GM_To_SL_MsgQ;
 
+// Helpers
+static ServiceMsg screenService;
+
+char stringBuffer[N_CHAR_PER_LINE * N_LINE + 2];
+
+// Declarations
 void ModeRadioStep(INT16U event);
 void ModeStatStep(INT16U event);
+void sendToScreen(const char *str);
 
 //------------------------------------------------------ Fonctions privées
 //static type nom ( liste de paramètres )
@@ -166,22 +177,39 @@ void ModeStatStep(INT16U event) {
 }
 
 void GestionStat(INT16U event) {
-	// TODO send to display ServiceMsg serviceData;
+
+	char strNbUtil[] = "MS_NB_UTIL";
+	char strVolume[] = "MS_VOLUME";
+	char strStation[] = "MS_STATION";
 
 	ModeStatStep(event);
 
 	switch (modeStat) {
 	case MS_NB_UTIL:
+
+		//memcpy(stringBuffer, strNbUtil, strlen(strNbUtil));
+		sendToScreen(strNbUtil);
+
 		break;
 	case MS_VOLUME:
-		volStateCounter = (MS_VOL_SCREEN_NUM + volStateCounter - 1) % MS_VOL_SCREEN_NUM;
+		volStateCounter = (MS_VOL_SCREEN_NUM + volStateCounter - 1)
+				% MS_VOL_SCREEN_NUM;
 		//TODO read EEPROM
 		//TODO Display data
+
+		//memcpy(stringBuffer, strVolume, strlen(strVolume));
+		sendToScreen(strVolume);
+
 		break;
 	case MS_STATION:
-		freqStateCounter = (MS_FREQ_SCREEN_NUM + freqStateCounter - 1) % MS_FREQ_SCREEN_NUM;
+		freqStateCounter = (MS_FREQ_SCREEN_NUM + freqStateCounter - 1)
+				% MS_FREQ_SCREEN_NUM;
 		//TODO read EEPROM
 		//TODO Display data
+
+		//memcpy(stringBuffer, strStation, strlen(strStation));
+		sendToScreen(strStation);
+
 		break;
 	default:
 		break;
@@ -191,6 +219,9 @@ void GestionStat(INT16U event) {
 
 void GestionRadio(INT16U event) {
 
+	char strDefault[] = "MR_DEFAULT";
+	char strFreq[] = "MR_SET_FREQ";
+	char strVolume[] = "MR_SET_VOL";
 	ServiceMsg serviceData;
 	StatMsg statData;
 
@@ -198,7 +229,10 @@ void GestionRadio(INT16U event) {
 
 	switch (modeRadio) {
 	case MR_DEFAULT:
+		//memcpy(stringBuffer, strDefault, strlen(strDefault));
 		// TODO print radio and volume information
+		//stringBuffer
+		sendToScreen(strDefault);
 		break;
 	case MR_SET_FREQ:
 		if (event == CMD2) {
@@ -216,7 +250,11 @@ void GestionRadio(INT16U event) {
 		statData.msgType = STAT_LOG;
 		statData.freq = currentFreqId;
 		OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+
+		//memcpy(stringBuffer, strFreq, strlen(strFreq));
 		// TODO print frequency information
+		//stringBuffer
+		sendToScreen(strFreq);
 		break;
 	case MR_SET_VOL:
 		if (event == CMD2) {
@@ -234,7 +272,10 @@ void GestionRadio(INT16U event) {
 		statData.msgType = STAT_LOG;
 		statData.volumeLvl = currentVolLvl;
 		OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+
+		//memcpy(stringBuffer, strVolume, strlen(strVolume));
 		// TODO print volume information and set bargraph
+		sendToScreen(strVolume);
 		break;
 	default:
 		break;
@@ -243,7 +284,6 @@ void GestionRadio(INT16U event) {
 
 void GestionMode(void *parg) {
 
-	char str[] = "Bonjour!123456789\nCo..";
 	task_GM_Param *param = (task_GM_Param*) parg;
 	TI_To_GM_MsgQ = param->TI_To_GM_MsgQ;
 	GM_To_SO_MsgQ = param->GM_To_SO_MsgQ;
@@ -253,6 +293,15 @@ void GestionMode(void *parg) {
 	InputCmd *recvData;
 	ServiceMsg serviceData;
 	StatMsg statData;
+
+
+	char strDefault[] = "VEILLE";
+	char strMRInit[] = "MR_INIT";
+	char strMR[] = "MR";
+	char strMRFIN[] = "MR_FIN";
+	char strMS[] = "MS";
+
+
 
 	for (;;) {
 
@@ -265,6 +314,8 @@ void GestionMode(void *parg) {
 		switch (mode) {
 		case VEILLE:
 			// LPM
+			sendToScreen(strDefault);
+
 			break;
 		case MR_INIT:
 			// Notify stat logger that we enter radio mode
@@ -281,7 +332,7 @@ void GestionMode(void *parg) {
 			serviceData.serviceType = SERV_VOLUME;
 			serviceData.val = currentVolLvl;
 			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
-
+/*
 			// Send current freq id to logger
 			statData.msgType = STAT_LOG;
 			statData.freq = currentFreqId;
@@ -291,16 +342,16 @@ void GestionMode(void *parg) {
 			statData.msgType = STAT_LOG;
 			statData.volumeLvl = currentVolLvl;
 			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+*/
+			sendToScreen(strMRInit);
 
-			serviceData.serviceType = SERV_LCD;
-			serviceData.msg.pBuffer = (void *)str;
-			serviceData.msg.size = strlen(str);
-			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
 
 			break;
 		case MR:
 			// Transfer event to GestionRadio
 			GestionRadio(recvData->cmdID);
+			sendToScreen(strMR);
+
 			break;
 		case MR_FIN:
 			// Notify stat logger that we leave radio mode
@@ -312,10 +363,15 @@ void GestionMode(void *parg) {
 			serviceData.serviceType = SERV_VOLUME;
 			serviceData.val = 0;
 			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
+
+			sendToScreen(strMRFIN);
+
 			break;
 		case MS:
 			// Transfer event to GestionStat
 			GestionStat(recvData->cmdID);
+			sendToScreen(strMS);
+
 			break;
 		default:
 			break;
@@ -338,3 +394,11 @@ void GestionMode(void *parg) {
 	}
 
 }
+
+void sendToScreen(const char *str) {
+	screenService.serviceType = SERV_LCD;
+	screenService.msg.pBuffer = (void *) str;
+	screenService.msg.size = strlen(str);
+	OSQPost(GM_To_SO_MsgQ, (void *) &screenService);
+}
+

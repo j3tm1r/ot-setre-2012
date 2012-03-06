@@ -23,9 +23,9 @@ void TraitementInput(void *parg) {
 		InputEvent *event = (InputEvent*) OSQPend(ISR_To_TI_MsgQ, 0, &err);
 		switch (event->msgType) {
 		case IT_BUTTON:
-			clearDisplay();
-			printString("TI");
-			printDecimal(event->bEvent);
+//			clearDisplay();
+//			printString("TI");
+//			printDecimal(event->bEvent);
 
 			switch (event->bEvent) {
 			case BUT0:
