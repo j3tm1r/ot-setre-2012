@@ -11,7 +11,8 @@
 #include <os_cpu.h>
 
 #define STAT_INIT	0
-#define STAT_END	1
+#define STAT_LOG	1
+#define STAT_END	2
 
 typedef struct StatMsg {
 	INT16U msgType;

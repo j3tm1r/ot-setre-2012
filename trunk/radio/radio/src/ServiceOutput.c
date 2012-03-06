@@ -14,8 +14,22 @@
 
 #define		VOLUME_CMD	31
 
+// Definitions
+// Frequency
+static INT16U stationMap[] = {
+	201,
+	255,
+	463,
+	503,
+	615,
+	765,
+	828
+};
+
+
 // Declarations
 // Services
+void  setFrequencyById(INT8U freqId);
 INT8S setFrequency(INT16U nb);
 INT8S setVolume(INT8U cmd, INT8U nb);
 
@@ -39,7 +53,7 @@ void ServiceOutput(void *parg) {
 			case SERV_EEPROM:
 				break;
 			case SERV_FREQ:
-				setFrequency(data->val);
+				setFrequencyById(data->val);
 				break;
 			case SERV_LCD:
 				clearDisplay();
@@ -47,10 +61,24 @@ void ServiceOutput(void *parg) {
 				// Parse string '\n' gotoSecondLine() TODO
 				printString("SO:");
 				printDecimal(data->val);
+
+				char *str = data->msg.pBuffer;
+				char screenBuffer[N_CHAR_PER_LINE * N_LINE + 2];	// count '\0' and '\n'
+				INT8U strLen = data->msg.size;
+				int i = 0;
+				while(i < strLen) {
+					if(str[i] != '\n') {
+						screenBuffer[i] = str[i];
+					}
+				}
+
 				//printString(data->msg.pBuffer);
 				break;
 			case SERV_VOLUME:
-				setVolume(VOLUME_CMD, data->val);
+				//setVolume(VOLUME_CMD, data->val);
+				clearDisplay();
+				printString("SO :");
+				printDecimal(data->val);
 				break;
 			default:
 				// Error
@@ -59,6 +87,12 @@ void ServiceOutput(void *parg) {
 
 		}
 
+}
+
+void  setFrequencyById(INT8U freqId) {
+
+	INT16U stationFreq = stationMap[ freqId % FREQ_NUM];
+	setFrequency(stationFreq);
 }
 
 INT8S setFrequency(INT16U nb) {

@@ -21,11 +21,6 @@
 #include <ucos_ii.h>
 
 //------------------------------------------------------------- Constantes
-#define VEILLE		0
-#define MR_INIT		1
-#define MR			2
-#define MR_FIN		3
-#define MS			4
 
 // cmd
 #define CMD0		0

@@ -32,5 +32,12 @@ typedef struct ServiceMsg {
 
 void ServiceOutput(void *parg);
 
+// Volume
+#define FREQ_NUM		7
+#define DEFAULT_FREQ_ID	0	// [0..6]
+
+#define VOL_NUM		8
+#define DEFAULT_VOL_LVL	3	// [0..7]
+
 
 #endif /* SERVICE_OUTPUT_H_ */

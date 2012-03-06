@@ -23,18 +23,19 @@ typedef struct task_TI_Param {
 } task_TI_Param;
 
 enum TI_MsgType {
-	IT_BUTTON,
-	IT_TLC
+	IT_BUTTON, IT_TLC
 };
 
-typedef union InputEvent {
+typedef struct InputEvent {
 	enum TI_MsgType msgType;
-	INT16U bEvent;
-	struct {
-		void *pBuffer;
-		INT16U size;
-	} tcEvent;
 
+	union {
+		INT16U bEvent;
+		struct {
+			void *pBuffer;
+			INT16U size;
+		} tcEvent;
+	};
 } InputEvent;
 
 void TraitementInput(void *parg);
