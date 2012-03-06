@@ -5,27 +5,41 @@
  *      Author: mbbadau
  */
 
-
 #include "StatLogger.h"
 #include "os_cfg.h"
 #include "Display.h"
 #include "includes.h"
+#include "GestionMode.h"
 
 void StatLogger(void *parg) {
 
 	INT8U err;
 	StatMsg *recvData;
+	InputCmd ackCmd;
 
-	OS_EVENT *TI_To_GM_MsgQ = (OS_EVENT*) parg;
+	task_SL_Param *param = (task_SL_Param*) parg;
+	OS_EVENT *TI_To_GM_MsgQ = param->TI_To_GM_MsgQ;
+	OS_EVENT *GM_To_SL_MsgQ = param->GM_To_SL_MsgQ;
 
-	for(;;) {
+	for (;;) {
 
-		recvData = (StatMsg*) OSQPend (TI_To_GM_MsgQ, 0, &err);
+		recvData = (StatMsg*) OSQPend(GM_To_SL_MsgQ, 0, &err);
 
-		gotoSecondLine();
-		printString("SL :");
-		printDecimal(recvData->volumeLvl);
+		if (recvData->msgType == STAT_INIT) {
 
-		//OSTimeDly(OS_TICKS_PER_SEC);
+			ackCmd.cmdID = MR_INIT_ACK;
+			OSQPost(TI_To_GM_MsgQ, (void *) &ackCmd);
+
+		}
+
+//		gotoSecondLine();
+//		printString("SL :");
+//		printDecimal(recvData->volumeLvl);
+		/*
+		 #define MR_INIT_ACK	4
+		 #define MR_FIN_ACK	5
+		 */
+
+//OSTimeDly(OS_TICKS_PER_SEC);
 	}
 }

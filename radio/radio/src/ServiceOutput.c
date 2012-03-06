@@ -58,7 +58,6 @@ void ServiceOutput(void *parg) {
 
 		for (;;) {
 
-
 			data = (ServiceMsg*) OSQPend (msgQServiceOutput, 0, &err);
 
 			switch(data->serviceType) {

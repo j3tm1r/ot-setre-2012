@@ -172,8 +172,11 @@ int main(void) {
 	OSTaskCreate(ServiceOutput, (void *) GM_To_SO_MsgQ,
 			&StkServiceOutput[TASK_STK_SIZE - 1], prio);
 
+	task_SL_Param slParam;
+	slParam.GM_To_SL_MsgQ = GM_To_SL_MsgQ;
+	slParam.TI_To_GM_MsgQ = TI_To_GM_MsgQ;
 	prio = 13;
-	OSTaskCreate(StatLogger, (void *) GM_To_SL_MsgQ,
+	OSTaskCreate(StatLogger, (void *) &slParam,
 			&StkLoggerStat[TASK_STK_SIZE - 1], prio);
 
 	clearDisplay();
