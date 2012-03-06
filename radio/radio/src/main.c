@@ -140,10 +140,6 @@ int main(void) {
 	TACCTL0 = CCIE; /* Enable the TACCR0 interrupt. */
 	TACCR0 = 913; /* Load the TACCR0 register. Value must be defined by testing */
 
-
-
-
-
 	OSInit(); /* Initialize uC/OS-II */
 
 	void *ISR_To_TI_Buffer[MSG_Q_SIZE];
@@ -186,7 +182,7 @@ int main(void) {
 
 	P1IE = ~BIT0;
 	eint();
-	TACTL |= MC1;           /* Start the Timer in Continuous mode. */
+	TACTL |= MC1; /* Start the Timer in Continuous mode. */
 	OSStart();
 	return (0);
 }
@@ -199,6 +195,7 @@ int main(void) {
 
 interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 
+	INT8U err;
 	INT8U P4Buffer;
 	InputEvent msg;
 	OS_CPU_SR cpu_sr = 0;
@@ -206,51 +203,35 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 	//désactiver les interruptions
 	P1IE = 0;
 	OS_ENTER_CRITICAL(); //save cpu status register locally end restore it when finished
-	OSIntEnter();
+	//OSIntEnter(); DOESNT WORK
 
 	//récupérer les informations des boutons
 	Delayx100us(10);
 
+	msg.bEvent  = BUTERR;
 	msg.msgType = IT_BUTTON;
-	msg.bEvent = BUTERR;
+	P4Buffer = P4IN;
 
-	//while (Message.bEvent == 4)
-	{
-		P4Buffer = P4IN;
-
-		if (!(P4Buffer & 0x10)) {
-			msg.bEvent = BUT0;
-			//break;
-
-		}
-		if (!(P4Buffer & 0x20)) {
-			msg.bEvent = BUT1;
-			//break;
-
-		}
-		if (!(P4Buffer & 0x40)) {
-			msg.bEvent = BUT2;
-			//break;
-
-		}
-		if (!(P4Buffer & 0x80)) {
-			msg.bEvent = BUT3;
-			//	break;
-		}
-		//Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
-		//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
+	if (!(P4Buffer & 0x10)) {
+		msg.bEvent = BUT0;
 	}
+	if (!(P4Buffer & 0x20)) {
+		msg.bEvent = BUT1;
+	}
+	if (!(P4Buffer & 0x40)) {
+		msg.bEvent = BUT2;
+	}
+	if (!(P4Buffer & 0x80)) {
+		msg.bEvent = BUT3;
+	}
+	//Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
+	//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
 
-	clearDisplay();
-	printDecimal(msg.bEvent);
-	gotoSecondLine();
-	printByte(P4Buffer);
-	//todo:les transmettre par MailBox ou MessageQueue au TraitementInput
 
-	//INT8U err =
-	OSQPost(ISR_To_TI_MsgQ, (void *) &msg);
-
-	OSIntExit();
+	if (msg.bEvent != BUTERR) {
+		err = OSQPost(ISR_To_TI_MsgQ, (void *) &msg);
+	}
+	//OSIntExit(); DOESNT WORK
 	OS_EXIT_CRITICAL();
 
 	//remise du sémaphore à 0

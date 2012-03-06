@@ -10,6 +10,10 @@
 
 #include <msp430x14x.h>
 #include <os_cpu.h>
+
+#define N_LINE				2
+#define N_CHAR_PER_LINE		16
+
 #define PERIOD 1000
 #define HIGH_TIME 50
 #define bitset(var,bitno) ((var) |= 1 << (bitno))

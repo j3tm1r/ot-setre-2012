@@ -9,14 +9,14 @@
 #include "GestionMode.h"
 #include "ServicesES/Display.h"
 
-extern OS_EVENT *ISR_To_TI_MsgQ;
-extern OS_EVENT *TI_To_GM_MsgQ;
-
 void TraitementInput(void *parg) {
 	INT8U err;
 	InputCmd cmd;
 
-	//TACTL |= MC1;           /* Start the Timer in Continuous mode. */
+	task_TI_Param *param = (task_TI_Param*) parg;
+	OS_EVENT *ISR_To_TI_MsgQ = param->ISR_To_TI_MsgQ;
+	OS_EVENT *TI_To_GM_MsgQ  = param->TI_To_GM_MsgQ;
+
 
 	for (;;) {
 
@@ -44,16 +44,13 @@ void TraitementInput(void *parg) {
 				// error
 				break;
 			}
-
-			err = OSQPost(TI_To_GM_MsgQ, (void *) &cmd);
 			break;
 		case IT_TLC:
-			// TODO
 			break;
 		default:
-			//error
 			break;
 		}
 
+		err = OSQPost(TI_To_GM_MsgQ, (void *) &cmd);
 	}
 }
