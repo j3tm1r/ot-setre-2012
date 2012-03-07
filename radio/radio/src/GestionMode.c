@@ -65,17 +65,16 @@ static OS_EVENT *GM_To_SO_MsgQ;
 static OS_EVENT *GM_To_SL_MsgQ;
 
 //
-static char strDefault[]= "VEILLE";
+static char strDefault[] = "VEILLE";
 static char strMRInit[] = "MR_INIT";
-static char strMRFIN[] 	= "MR_FIN";
+static char strMRFIN[] = "MR_FIN";
 
-static char strMRDefault[]= "MR_DEFAULT";
-static char strMRFreq[]   = "MR_SET_FREQ";
+static char strMRDefault[] = "MR_DEFAULT";
+static char strMRFreq[] = "MR_SET_FREQ";
 static char strMRVolume[] = "MR_SET_VOL";
 static char strMSNbUtil[] = "MS_NB_UTIL";
 static char strMSVolume[] = "MS_VOLUME";
-static char strMSStation[]= "MS_STATION";
-
+static char strMSStation[] = "MS_STATION";
 
 // Helpers
 
@@ -172,11 +171,15 @@ void GestionModeStep(INT16U event) {
 
 		} else if (event == CMD1) {
 			mode = MS;
+			// Transfer event to GestionStat
+			GestionStat(event);
 		}
 		break;
 	case MR_INIT:
 		if (event == MR_INIT_ACK) {
 			mode = MR;
+			// Transfer event to GestionRadio
+			GestionRadio(event);
 		}
 		break;
 	case MR:
@@ -196,9 +199,10 @@ void GestionModeStep(INT16U event) {
 			OSQPost(GM_To_SO_MsgQ, (void *) servMsg);
 
 			sendToScreen(strMRFIN);
+		} else {
+			// Transfer event to GestionRadio
+			GestionRadio(event);
 		}
-		// Transfer event to GestionStat
-		GestionStat(event);
 		break;
 	case MR_FIN:
 		if (event == MR_FIN_ACK) {
@@ -210,9 +214,10 @@ void GestionModeStep(INT16U event) {
 		if (event == CMD1) {
 			mode = VEILLE;
 			ModeVeille();
+		} else {
+			// Transfer event to GestionStat
+			GestionStat(event);
 		}
-		// Transfer event to GestionStat
-		GestionStat(event);
 		break;
 	default:
 		break;
@@ -239,7 +244,8 @@ void GestionRadio(INT16U event) {
 		} else if (event == CMD3) {
 			currentFreqId = (currentFreqId + 1) % FREQ_NUM;
 		} else {
-			// error: should never happen
+			// CMD1
+			break;
 		}
 		// Set frequency
 		servMsg = (ServiceMsg*) GetNextSlot(GM_To_SO_CmdBuf);
@@ -252,9 +258,7 @@ void GestionRadio(INT16U event) {
 		statMsg->freq = currentFreqId;
 		OSQPost(GM_To_SL_MsgQ, (void *) statMsg);
 
-		//memcpy(stringBuffer, strFreq, strlen(strFreq));
 		// TODO print frequency information
-		//stringBuffer
 		sendToScreen(strMRFreq);
 		break;
 	case MR_SET_VOL:
@@ -263,11 +267,17 @@ void GestionRadio(INT16U event) {
 		} else if (event == CMD3) {
 			currentVolLvl = (currentVolLvl + 1) % VOL_NUM;
 		} else {
-			// error: should never happen
+			// CMD1
+			break;
 		}
 		// Set volume
 		servMsg = (ServiceMsg*) GetNextSlot(GM_To_SO_CmdBuf);
 		servMsg->serviceType = SERV_VOLUME;
+		servMsg->val = currentVolLvl;
+		OSQPost(GM_To_SO_MsgQ, (void *) servMsg);
+		// Set bargraph
+		servMsg = (ServiceMsg*) GetNextSlot(GM_To_SO_CmdBuf);
+		servMsg->serviceType = SERV_BARGRAPH;
 		servMsg->val = currentVolLvl;
 		OSQPost(GM_To_SO_MsgQ, (void *) servMsg);
 		// Send current volume level to logger
@@ -312,6 +322,17 @@ void GestionStat(INT16U event) {
 
 	StatModeStep(event);
 
+	if (event == CMD0) {
+		// TODO erase data
+		// send data to StatLogger
+		sendToScreen("Erasing data...");
+		// TMP
+		OSTimeDly(OS_TICKS_PER_SEC);
+		sendToScreen("Data erased !");
+		OSTimeDly(OS_TICKS_PER_SEC);
+		// TMP END
+	}
+
 	switch (modeStat) {
 	case MS_NB_UTIL:
 
@@ -325,7 +346,6 @@ void GestionStat(INT16U event) {
 		//TODO read EEPROM
 		//TODO Display data
 
-		//memcpy(stringBuffer, strVolume, strlen(strVolume));
 		sendToScreen(strMSVolume);
 
 		break;
