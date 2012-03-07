@@ -13,6 +13,7 @@ typedef struct CmdBuffer {
 	void 	*data;
 	INT8U	chunkSize;
 	INT8U	nChunks;
+	INT8S	curChunk;
 } CmdBuffer;
 
 static INT8U 		availableSlots [CMD_BUFFER_NMAX] = {1};		// Initialize all slots to 0
@@ -34,6 +35,7 @@ INT8S InitCmdBuffer(INT8U nSlot, INT8U slotSize) {
 
 	cmdBuffer[i].chunkSize = slotSize;
 	cmdBuffer[i].nChunks = nSlot;
+	cmdBuffer[i].curChunk = 0;
 	cmdBuffer[i].data = malloc(nSlot * slotSize);
 	if (cmdBuffer[i].data == 0) {
 		return -1;
@@ -51,7 +53,14 @@ void *GetNextSlot(INT8S cmdBufHandle) {
 	if(cmdBufHandle < 0 || cmdBufHandle >= CMD_BUFFER_NMAX ) {
 		return 0;
 	}
-	return &cmdBuffer[cmdBufHandle];
+	void *nextSlot;
+	CmdBuffer *curBuf = &cmdBuffer[cmdBufHandle];
+
+	// get a pointer to next chunk of data in the buffer
+	curBuf->curChunk = (curBuf->curChunk + 1) % curBuf->nChunks;
+	nextSlot = curBuf->data + curBuf->curChunk * curBuf->chunkSize;
+
+	return nextSlot;
 }
 
 INT8S DestroyCmdBuffer(INT8S cmdBufHandle) {
