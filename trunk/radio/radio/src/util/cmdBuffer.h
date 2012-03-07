@@ -10,7 +10,7 @@
 
 #include    <os_cpu.h>
 
-#define CMD_BUFFER_NMAX 	10
+#define CMD_BUFFER_NMAX 	5
 
 INT8S InitCmdBuffer(INT8U nSlot, INT8U slotSize);
 // returns a handle on a CmdBuffer or -1 in case of error

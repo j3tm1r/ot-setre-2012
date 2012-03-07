@@ -16,7 +16,7 @@ typedef struct CmdBuffer {
 	INT8S	curChunk;
 } CmdBuffer;
 
-static INT8U 		availableSlots [CMD_BUFFER_NMAX] = {1};		// Initialize all slots to 0
+static INT8U 		requestedSlots [CMD_BUFFER_NMAX];		// Slots are initialized to 0
 static CmdBuffer 	cmdBuffer [CMD_BUFFER_NMAX];
 static INT8U		nCmdBuffer = 0;
 
@@ -28,7 +28,7 @@ INT8S InitCmdBuffer(INT8U nSlot, INT8U slotSize) {
 	// get first available slot in cmdBuffer table
 	int i;
 	for (i=0; i < CMD_BUFFER_NMAX; ++i) {
-		if(availableSlots[i] == 1) {
+		if(requestedSlots[i] == 0) {
 			break;
 		}
 	}
@@ -42,7 +42,7 @@ INT8S InitCmdBuffer(INT8U nSlot, INT8U slotSize) {
 	}
 
 	// reserve current slot
-	availableSlots[i] = 0;
+	requestedSlots[i] = 1;
 	// increment CmdBuffer use counter
 	++nCmdBuffer;
 
@@ -70,7 +70,7 @@ INT8S DestroyCmdBuffer(INT8S cmdBufHandle) {
 
 	free(cmdBuffer[cmdBufHandle].data);
 
-	availableSlots [cmdBufHandle] = 1;
+	requestedSlots [cmdBufHandle] = 0;
 	--nCmdBuffer;
 
 	return 0;
