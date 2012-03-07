@@ -16,23 +16,24 @@ RADIODIR	= ./radio/include
 
 INCDIR		= -I./ -I$(RTOSDIR) -I$(PORTDIR) -I$(RADIODIR) -I$(SERVDIR)
 
-OBJECTS         = $(OBJDIR)/app.o			\
-                  $(OBJDIR)/os_cpu_a.o		\
-                  $(OBJDIR)/os_cpu_c.o		\
-                  $(OBJDIR)/os_core.o		\
-                  $(OBJDIR)/os_flag.o		\
-                  $(OBJDIR)/os_mbox.o		\
-                  $(OBJDIR)/os_mem.o		\
-                  $(OBJDIR)/os_mutex.o		\
-                  $(OBJDIR)/os_q.o			\
-                  $(OBJDIR)/os_sem.o		\
-                  $(OBJDIR)/os_task.o		\
-                  $(OBJDIR)/os_time.o		\
-		    	  $(OBJDIR)/Display.o		\
-		  		  $(OBJDIR)/ServiceOutput.o \
-		  		  $(OBJDIR)/GestionMode.o	\
-		  		  $(OBJDIR)/StatLogger.o 	\
-		  		  $(OBJDIR)/TraitementInput.o
+OBJECTS         = $(OBJDIR)/app.o				\
+                  $(OBJDIR)/os_cpu_a.o			\
+                  $(OBJDIR)/os_cpu_c.o			\
+                  $(OBJDIR)/os_core.o			\
+                  $(OBJDIR)/os_flag.o			\
+                  $(OBJDIR)/os_mbox.o			\
+                  $(OBJDIR)/os_mem.o			\
+                  $(OBJDIR)/os_mutex.o			\
+                  $(OBJDIR)/os_q.o				\
+                  $(OBJDIR)/os_sem.o			\
+                  $(OBJDIR)/os_task.o			\
+                  $(OBJDIR)/os_time.o			\
+		    	  $(OBJDIR)/Display.o			\
+		  		  $(OBJDIR)/ServiceOutput.o 	\
+		  		  $(OBJDIR)/GestionMode.o		\
+		  		  $(OBJDIR)/StatLogger.o 		\
+		  		  $(OBJDIR)/TraitementInput.o	\
+		  		  $(OBJDIR)/cmdBuffer.o
 		  		  
                   
 CPU             = msp430x149
@@ -105,6 +106,9 @@ $(OBJDIR)/StatLogger.o : $(SRCDIR)/StatLogger.c
 	$(CC) $(CFLAGS) -o $@ $<
 	
 $(OBJDIR)/TraitementInput.o : $(SRCDIR)/TraitementInput.c
+	$(CC) $(CFLAGS) -o $@ $<
+	
+$(OBJDIR)/cmdBuffer.o : $(SRCDIR)/util/cmdBuffer.c
 	$(CC) $(CFLAGS) -o $@ $<
 	
 #################################	

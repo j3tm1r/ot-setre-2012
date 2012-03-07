@@ -69,8 +69,13 @@ static ServiceMsg screenService;
 char stringBuffer[N_CHAR_PER_LINE * N_LINE + 2];
 
 // Declarations
-void ModeRadioStep(INT16U event);
-void ModeStatStep(INT16U event);
+void GestionModeStep(INT16U event);
+void GestionRadio(INT16U event);
+void RadioModeStep(INT16U event);
+void GestionStat(INT16U event);
+void StatModeStep(INT16U event);
+void ModeVeille();
+
 void sendToScreen(const char *str);
 
 //------------------------------------------------------ Fonctions privées
@@ -87,15 +92,67 @@ void sendToScreen(const char *str);
 //////////////////////////////////////////////////////////////////  PUBLIC
 //---------------------------------------------------- Fonctions publiques
 
-void GestionRadio(INT16U event);
-void GestionStat(INT16U event);
 
-void ModeStep(INT16U event) {
+void GestionMode(void *parg) {
+
+	task_GM_Param *param = (task_GM_Param*) parg;
+	TI_To_GM_MsgQ = param->TI_To_GM_MsgQ;
+	GM_To_SO_MsgQ = param->GM_To_SO_MsgQ;
+	GM_To_SL_MsgQ = param->GM_To_SL_MsgQ;
+
+	INT8U err;
+	InputCmd *recvData;
+
+	for (;;) {
+
+		recvData = (InputCmd*) OSQPend(TI_To_GM_MsgQ, 0, &err);
+
+		GestionModeStep(recvData->cmdID);
+
+	}
+
+}
+
+void GestionModeStep(INT16U event) {
+
+	char strMRInit[] = "MR_INIT";
+	char strMRFIN[] = "MR_FIN";
+
+	ServiceMsg serviceData;
+	StatMsg statData;
 
 	switch (mode) {
 	case VEILLE:
 		if (event == CMD0) {
 			mode = MR_INIT;
+
+			// Notify stat logger that we enter radio mode
+			statData.msgType = STAT_INIT;
+			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+
+			// Start radio
+			// Set frequency
+			serviceData.serviceType = SERV_FREQ;
+			serviceData.val = currentFreqId;
+			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
+
+			// Set volume
+			serviceData.serviceType = SERV_VOLUME;
+			serviceData.val = currentVolLvl;
+			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
+/*
+			// Send current freq id to logger
+			statData.msgType = STAT_LOG;
+			statData.freq = currentFreqId;
+			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+
+			// Send current volume level to logger
+			statData.msgType = STAT_LOG;
+			statData.volumeLvl = currentVolLvl;
+			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+*/
+			sendToScreen(strMRInit);
+
 		} else if (event == CMD1) {
 			mode = MS;
 		}
@@ -108,113 +165,39 @@ void ModeStep(INT16U event) {
 	case MR:
 		if (event == CMD0) {
 			mode = MR_FIN;
+
+			// Notify stat logger that we leave radio mode
+			statData.msgType = STAT_END;
+			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+
+			// Stop radio
+			// Set volume to 0
+			serviceData.serviceType = SERV_VOLUME;
+			serviceData.val = 0;
+			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
+
+			sendToScreen(strMRFIN);
 		}
+		// Transfer event to GestionStat
+		GestionStat(event);
 		break;
 	case MR_FIN:
 		if (event == MR_FIN_ACK) {
 			mode = VEILLE;
+			ModeVeille();
 		}
 		break;
 	case MS:
 		if (event == CMD1) {
 			mode = VEILLE;
+			ModeVeille();
 		}
+		// Transfer event to GestionStat
+		GestionStat(event);
 		break;
 	default:
 		break;
 	}
-}
-
-void ModeRadioStep(INT16U event) {
-
-	switch (modeRadio) {
-	case MR_DEFAULT:
-		if (event == CMD1) {
-			modeRadio = MR_SET_FREQ;
-		}
-		break;
-	case MR_SET_FREQ:
-		if (event == CMD1) {
-			modeRadio = MR_SET_VOL;
-		}
-		break;
-	case MR_SET_VOL:
-		if (event == CMD1) {
-			modeRadio = MR_DEFAULT;
-		}
-		break;
-	default:
-		break;
-	}
-}
-
-void ModeStatStep(INT16U event) {
-	switch (modeStat) {
-	case MS_NB_UTIL:
-		if (event == CMD2) {
-			modeStat = MS_VOLUME;
-		} else if (event == CMD3) {
-			modeStat = MS_STATION;
-		}
-		break;
-	case MS_VOLUME:
-		if (event == CMD2) {
-			modeStat = MS_STATION;
-		} else if (event == CMD3) {
-			modeStat = MS_NB_UTIL;
-		}
-		break;
-	case MS_STATION:
-		if (event == CMD2) {
-			modeStat = MS_NB_UTIL;
-		} else if (event == CMD3) {
-			modeStat = MS_VOLUME;
-		}
-		break;
-	default:
-		break;
-	}
-}
-
-void GestionStat(INT16U event) {
-
-	char strNbUtil[] = "MS_NB_UTIL";
-	char strVolume[] = "MS_VOLUME";
-	char strStation[] = "MS_STATION";
-
-	ModeStatStep(event);
-
-	switch (modeStat) {
-	case MS_NB_UTIL:
-
-		//memcpy(stringBuffer, strNbUtil, strlen(strNbUtil));
-		sendToScreen(strNbUtil);
-
-		break;
-	case MS_VOLUME:
-		volStateCounter = (MS_VOL_SCREEN_NUM + volStateCounter - 1)
-				% MS_VOL_SCREEN_NUM;
-		//TODO read EEPROM
-		//TODO Display data
-
-		//memcpy(stringBuffer, strVolume, strlen(strVolume));
-		sendToScreen(strVolume);
-
-		break;
-	case MS_STATION:
-		freqStateCounter = (MS_FREQ_SCREEN_NUM + freqStateCounter - 1)
-				% MS_FREQ_SCREEN_NUM;
-		//TODO read EEPROM
-		//TODO Display data
-
-		//memcpy(stringBuffer, strStation, strlen(strStation));
-		sendToScreen(strStation);
-
-		break;
-	default:
-		break;
-	}
-
 }
 
 void GestionRadio(INT16U event) {
@@ -225,7 +208,7 @@ void GestionRadio(INT16U event) {
 	ServiceMsg serviceData;
 	StatMsg statData;
 
-	ModeRadioStep(event);
+	RadioModeStep(event);
 
 	switch (modeRadio) {
 	case MR_DEFAULT:
@@ -282,117 +265,102 @@ void GestionRadio(INT16U event) {
 	}
 }
 
-void GestionMode(void *parg) {
+void RadioModeStep(INT16U event) {
 
-	task_GM_Param *param = (task_GM_Param*) parg;
-	TI_To_GM_MsgQ = param->TI_To_GM_MsgQ;
-	GM_To_SO_MsgQ = param->GM_To_SO_MsgQ;
-	GM_To_SL_MsgQ = param->GM_To_SL_MsgQ;
-
-	INT8U err;
-	InputCmd *recvData;
-	ServiceMsg serviceData;
-	StatMsg statData;
-
-
-	char strDefault[] = "VEILLE";
-	char strMRInit[] = "MR_INIT";
-	char strMR[] = "MR";
-	char strMRFIN[] = "MR_FIN";
-	char strMS[] = "MS";
-
-
-
-	for (;;) {
-
-		recvData = (InputCmd*) OSQPend(TI_To_GM_MsgQ, 0, &err);
-
-		ModeStep(recvData->cmdID);
-
-		// ATTENTION : il faudrait s'assurer que l'on ne rentre pas
-		// deux fois successivement dans les cas VEILLE, MR_INIT, MR_FIN
-		switch (mode) {
-		case VEILLE:
-			// LPM
-			sendToScreen(strDefault);
-
-			break;
-		case MR_INIT:
-			// Notify stat logger that we enter radio mode
-			statData.msgType = STAT_INIT;
-			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
-
-			// Start radio
-			// Set frequency
-			serviceData.serviceType = SERV_FREQ;
-			serviceData.val = currentFreqId;
-			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
-
-			// Set volume
-			serviceData.serviceType = SERV_VOLUME;
-			serviceData.val = currentVolLvl;
-			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
-/*
-			// Send current freq id to logger
-			statData.msgType = STAT_LOG;
-			statData.freq = currentFreqId;
-			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
-
-			// Send current volume level to logger
-			statData.msgType = STAT_LOG;
-			statData.volumeLvl = currentVolLvl;
-			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
-*/
-			sendToScreen(strMRInit);
-
-
-			break;
-		case MR:
-			// Transfer event to GestionRadio
-			GestionRadio(recvData->cmdID);
-			sendToScreen(strMR);
-
-			break;
-		case MR_FIN:
-			// Notify stat logger that we leave radio mode
-			statData.msgType = STAT_END;
-			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
-
-			// Stop radio
-			// Set volume to 0
-			serviceData.serviceType = SERV_VOLUME;
-			serviceData.val = 0;
-			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
-
-			sendToScreen(strMRFIN);
-
-			break;
-		case MS:
-			// Transfer event to GestionStat
-			GestionStat(recvData->cmdID);
-			sendToScreen(strMS);
-
-			break;
-		default:
-			break;
+	switch (modeRadio) {
+	case MR_DEFAULT:
+		if (event == CMD1) {
+			modeRadio = MR_SET_FREQ;
 		}
+		break;
+	case MR_SET_FREQ:
+		if (event == CMD1) {
+			modeRadio = MR_SET_VOL;
+		}
+		break;
+	case MR_SET_VOL:
+		if (event == CMD1) {
+			modeRadio = MR_DEFAULT;
+		}
+		break;
+	default:
+		break;
+	}
+}
 
-		/*gotoSecondLine();
-		 printString("GM");
-		 printDecimal(recvData->cmdID);
+void GestionStat(INT16U event) {
 
-		 serviceData.serviceType = SERV_FREQ;
-		 serviceData.val			= 828;
+	char strNbUtil[] = "MS_NB_UTIL";
+	char strVolume[] = "MS_VOLUME";
+	char strStation[] = "MS_STATION";
 
-		 statData.msgType = STAT_LOG;
-		 statData.volumeLvl = 241;
+	StatModeStep(event);
 
-		 err = OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
-		 err = OSQPost(GM_To_SL_MsgQ, (void *) &statData);*/
+	switch (modeStat) {
+	case MS_NB_UTIL:
 
-		//OSTimeDly(2*OS_TICKS_PER_SEC);
+		//memcpy(stringBuffer, strNbUtil, strlen(strNbUtil));
+		sendToScreen(strNbUtil);
+
+		break;
+	case MS_VOLUME:
+		volStateCounter = (MS_VOL_SCREEN_NUM + volStateCounter - 1)
+				% MS_VOL_SCREEN_NUM;
+		//TODO read EEPROM
+		//TODO Display data
+
+		//memcpy(stringBuffer, strVolume, strlen(strVolume));
+		sendToScreen(strVolume);
+
+		break;
+	case MS_STATION:
+		freqStateCounter = (MS_FREQ_SCREEN_NUM + freqStateCounter - 1)
+				% MS_FREQ_SCREEN_NUM;
+		//TODO read EEPROM
+		//TODO Display data
+
+		//memcpy(stringBuffer, strStation, strlen(strStation));
+		sendToScreen(strStation);
+
+		break;
+	default:
+		break;
 	}
 
+}
+
+void ModeVeille() {
+	char strDefault[] = "VEILLE";
+	// LPM
+	sendToScreen(strDefault);
+}
+
+void StatModeStep(INT16U event) {
+	switch (modeStat) {
+	case MS_NB_UTIL:
+		if (event == CMD2) {
+			modeStat = MS_VOLUME;
+		} else if (event == CMD3) {
+			modeStat = MS_STATION;
+		}
+		break;
+	case MS_VOLUME:
+		if (event == CMD2) {
+			modeStat = MS_STATION;
+		} else if (event == CMD3) {
+			modeStat = MS_NB_UTIL;
+		}
+		break;
+	case MS_STATION:
+		if (event == CMD2) {
+			modeStat = MS_NB_UTIL;
+		} else if (event == CMD3) {
+			modeStat = MS_VOLUME;
+		}
+		break;
+	default:
+		break;
+	}
 }
 
 void sendToScreen(const char *str) {
