@@ -210,11 +210,12 @@ int main(void) {
  *********************************************************************************************************
  */
 
+
 interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 
 	INT8U err;
 	INT8U P4Buffer;
-	InputEvent msg;
+	InputEvent *msg;
 	OS_CPU_SR cpu_sr = 0;
 //	ServiceMsg msgV;
 
@@ -228,32 +229,28 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 
 //	msgV.serviceType = SERV_FREQ;
 
-	msg.bEvent  = BUTERR;
-	msg.msgType = IT_BUTTON;
+	msg = (InputEvent *) GetNextSlot(ISR_To_TI_CmdBuf);
+	msg->bEvent  = BUTERR;
+	msg->msgType = IT_BUTTON;
 	P4Buffer = P4IN;
 
 	if (!(P4Buffer & 0x10)) {
-		msg.bEvent = BUT0;
-//		msgV.val = 0;
+		msg->bEvent = BUT0;
 	}
 	if (!(P4Buffer & 0x20)) {
-		msg.bEvent = BUT1;
-//		msgV.val = 2;
+		msg->bEvent = BUT1;
 	}
 	if (!(P4Buffer & 0x40)) {
-		msg.bEvent = BUT2;
-//		msgV.val = 5;
+		msg->bEvent = BUT2;
 	}
 	if (!(P4Buffer & 0x80)) {
-		msg.bEvent = BUT3;
-//		msgV.val = 7;
+		msg->bEvent = BUT3;
 	}
 	//Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
 	//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
 
-
-	if (msg.bEvent != BUTERR) {
-		err = OSQPost(ISR_To_TI_MsgQ, (void *) &msg);
+	if (msg->bEvent != BUTERR) {
+		err = OSQPost(ISR_To_TI_MsgQ, (void *) msg);
 	}
 	//OSQPost(GM_To_SO_MsgQ, (void *) &msgV);
 	//OSIntExit(); DOESNT WORK
@@ -263,7 +260,6 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 	P1IFG = 0;
 	//réactiver les interruptions
 	P1IE = 0xFF;
-
 }
 
 //todo: a finir
