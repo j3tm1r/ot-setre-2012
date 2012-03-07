@@ -17,6 +17,7 @@
 #include "os_cfg.h"
 #include "includes.h"
 #include "Display.h"
+#include "util/cmdBuffer.h"
 
 ///////////////////////////////////////////////////////////////////  PRIVE
 //------------------------------------------------------------- Constantes
@@ -78,6 +79,9 @@ void ModeVeille();
 
 void sendToScreen(const char *str);
 
+extern INT8S GM_To_SO_CmdBuf;
+extern INT8S GM_To_SL_CmdBuf;
+
 //------------------------------------------------------ Fonctions privées
 //static type nom ( liste de paramètres )
 // Mode d'emploi :
@@ -118,39 +122,46 @@ void GestionModeStep(INT16U event) {
 	char strMRInit[] = "MR_INIT";
 	char strMRFIN[] = "MR_FIN";
 
-	ServiceMsg serviceData;
-	StatMsg statData;
+	ServiceMsg *servMsg;
+	StatMsg *statMsg;
 
 	switch (mode) {
 	case VEILLE:
 		if (event == CMD0) {
 			mode = MR_INIT;
 
-			// Notify stat logger that we enter radio mode
-			statData.msgType = STAT_INIT;
-			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+//			// Notify stat logger that we enter radio mode
+//			statData.msgType = STAT_INIT;
+
+			statMsg = (StatMsg*) GetNextSlot(GM_To_SL_CmdBuf);
+			statMsg->msgType = STAT_INIT;
+			OSQPost(GM_To_SL_MsgQ, (void *) statMsg);
 
 			// Start radio
 			// Set frequency
-			serviceData.serviceType = SERV_FREQ;
-			serviceData.val = currentFreqId;
-			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
+			servMsg = (ServiceMsg*) GetNextSlot(GM_To_SO_CmdBuf);
+			servMsg->serviceType = SERV_FREQ;
+			servMsg->val = currentFreqId;
+			OSQPost(GM_To_SO_MsgQ, (void *) servMsg);
 
 			// Set volume
-			serviceData.serviceType = SERV_VOLUME;
-			serviceData.val = currentVolLvl;
-			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
-/*
+			servMsg = (ServiceMsg*) GetNextSlot(GM_To_SO_CmdBuf);
+			servMsg->serviceType = SERV_VOLUME;
+			servMsg->val = currentVolLvl;
+			OSQPost(GM_To_SO_MsgQ, (void *) servMsg);
+
 			// Send current freq id to logger
-			statData.msgType = STAT_LOG;
-			statData.freq = currentFreqId;
-			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+			statMsg = (StatMsg*) GetNextSlot(GM_To_SL_CmdBuf);
+			statMsg->msgType = STAT_LOG;
+			statMsg->freq = currentFreqId;
+			OSQPost(GM_To_SL_MsgQ, (void *) statMsg);
 
 			// Send current volume level to logger
-			statData.msgType = STAT_LOG;
-			statData.volumeLvl = currentVolLvl;
-			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
-*/
+			statMsg = (StatMsg*) GetNextSlot(GM_To_SL_CmdBuf);
+			statMsg->msgType = STAT_LOG;
+			statMsg->volumeLvl = currentVolLvl;
+			OSQPost(GM_To_SL_MsgQ, (void *) statMsg);
+
 			sendToScreen(strMRInit);
 
 		} else if (event == CMD1) {
@@ -166,15 +177,15 @@ void GestionModeStep(INT16U event) {
 		if (event == CMD0) {
 			mode = MR_FIN;
 
-			// Notify stat logger that we leave radio mode
-			statData.msgType = STAT_END;
-			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
-
-			// Stop radio
-			// Set volume to 0
-			serviceData.serviceType = SERV_VOLUME;
-			serviceData.val = 0;
-			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
+//			// Notify stat logger that we leave radio mode
+//			statData.msgType = STAT_END;
+//			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+//
+//			// Stop radio
+//			// Set volume to 0
+//			serviceData.serviceType = SERV_VOLUME;
+//			serviceData.val = 0;
+//			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
 
 			sendToScreen(strMRFIN);
 		}

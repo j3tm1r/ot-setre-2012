@@ -46,6 +46,7 @@ void  setFrequencyById(INT8U freqId);
 void  setVolumeByLvl(INT8U volLvl);
 INT8S setFrequency(INT16U nb);
 INT8S setVolume(INT8U cmd, INT8U nb);
+INT8S setBargraph(INT8U cmd);
 
 // Helpers
 INT8S sendOverSPI(INT8U target, INT16U data, INT8U nbits);
@@ -62,6 +63,7 @@ void ServiceOutput(void *parg) {
 
 			switch(data->serviceType) {
 			case SERV_BARGRAPH:
+				setBargraph(data->val); //Test avec valeurs fixes
 				break;
 			case SERV_EEPROM:
 				break;
@@ -72,6 +74,7 @@ void ServiceOutput(void *parg) {
 				clearDisplay();
 				char *str = data->msg.pBuffer;
 				char screenBuffer[N_CHAR_PER_LINE * N_LINE + 2];	// count '\0' and '\n'
+				UNUSED(screenBuffer);
 				INT8U strLen = strlen(str);//data->msg.size;
 				int i = 0;
 				int j = 0;
@@ -96,7 +99,8 @@ void ServiceOutput(void *parg) {
 				}
 				break;
 			case SERV_VOLUME:
-				setVolumeByLvl(data->val);
+				//setVolumeByLvl(data->val);
+				setVolume(VOLUME_CMD, data->val);
 				break;
 			default:
 				// Error
@@ -105,6 +109,55 @@ void ServiceOutput(void *parg) {
 
 		}
 
+}
+
+INT8S setBargraph(INT8U cmd) {
+
+	if(cmd>255) {
+		return -1;
+	}
+
+	INT8U i;
+	INT8U etatBargraph = 0;
+
+	if(cmd<32)
+		etatBargraph = 0x01;
+	else if(cmd<64)
+		etatBargraph = 0x03;
+	else if(cmd<96)
+		etatBargraph = 0x07;
+	else if(cmd<128)
+		etatBargraph = 0x0F;
+	else if(cmd<160)
+		etatBargraph = 0x1F;
+	else if(cmd<192)
+		etatBargraph = 0x3F;
+	else if(cmd<224)
+		etatBargraph = 0x7F;
+	else if(cmd<256)
+		etatBargraph = 0xFF;
+	else {
+		etatBargraph = 0;
+		return -1;
+	}
+
+	//Balayage et configuration de chaque LED du Bargraph
+	for(i=0;i<8;i++) {
+		//Assignation de l'adresse au contrôleur du Bargraph
+		P6OUT &= 0b11110001;
+		P6OUT |= i<<1;
+
+		P6OUT |= 0x80;	//Pin Select à 1 pour sélectionner le Bargraph
+
+		//Détermine si D doit être  à 1 ou 0
+		P6OUT &= 0b11111110;
+		P6OUT |= ((etatBargraph & (0b00000001 << i)) >> i);
+
+		OSTimeDly(1);
+		P6OUT &= 0x7F;	//Pin Select à 0 pour désélectionner le Bargraph
+	}
+
+	return 0;
 }
 
 void  setFrequencyById(INT8U freqId) {
@@ -121,10 +174,12 @@ INT8S setFrequency(INT16U nb) {
 
 	INT16U data = (nb << 2) & 0x0fff; // "create" dummy bits and select lowest 12 bits
 
-	clearDisplay();
-	printDecimal(nb);
-	gotoSecondLine();
-	printHex(data);
+	P6OUT &= 0x7F;	//Pin Select à 0 pour sélectionner la Fréquence
+
+	//clearDisplay();
+	//printDecimal(nb);
+	//gotoSecondLine();
+	//printHex(data);
 	sendOverSPI(SPI_FREQ, data, 12);
 
 	return 0;
@@ -137,7 +192,10 @@ void  setVolumeByLvl(INT8U volLvl) {
 
 INT8S setVolume(INT8U cmd, INT8U nb) {
 
+	P6OUT &= 0x7F;	//Pin Select à 0 pour sélectionner la Fréquence
+	P6OUT |= 0x80;	//Pin Select à 1 pour sélectionner le Volume
 	INT16U data = (cmd << 8) | nb;
+
 	// Send command & data
 	sendOverSPI(SPI_VOL, data, 16);
 

@@ -27,6 +27,7 @@ int count_int_me;
 #include "StatLogger.h"
 #include "TraitementInput.h"
 #include "Display.h"
+#include "util/cmdBuffer.h"
 
 /*
  *********************************************************************************************************
@@ -67,6 +68,12 @@ static OS_STK StkTraitementInput[TASK_STK_SIZE];
 static OS_STK StkGestionMode[TASK_STK_SIZE];
 static OS_STK StkServiceOutput[TASK_STK_SIZE];
 static OS_STK StkLoggerStat[TASK_STK_SIZE];
+static INT16U VolumeTest;
+
+INT8S ISR_To_TI_CmdBuf;
+INT8S TI_To_GM_CmdBuf;
+INT8S GM_To_SO_CmdBuf;
+INT8S GM_To_SL_CmdBuf;
 
 OS_EVENT *ISR_To_TI_MsgQ;
 OS_EVENT *TI_To_GM_MsgQ;
@@ -152,6 +159,11 @@ int main(void) {
 	GM_To_SO_MsgQ = OSQCreate(&GM_To_SO_Buffer[0], MSG_Q_SIZE);
 	GM_To_SL_MsgQ = OSQCreate(&GM_To_SL_Buffer[0], MSG_Q_SIZE);
 
+	ISR_To_TI_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(InputEvent));
+	TI_To_GM_CmdBuf  = InitCmdBuffer(MSG_Q_SIZE, sizeof(InputCmd));
+	GM_To_SO_CmdBuf  = InitCmdBuffer(MSG_Q_SIZE, sizeof(ServiceMsg));
+	GM_To_SL_CmdBuf  = InitCmdBuffer(MSG_Q_SIZE, sizeof(StatMsg));
+
 	INT8U prio = 20;
 	task_TI_Param tiParam;
 	tiParam.ISR_To_TI_MsgQ = ISR_To_TI_MsgQ;
@@ -183,6 +195,8 @@ int main(void) {
 	printString("Start OS");
 	count_int_me = 0;
 
+	VolumeTest = 0;
+
 	P1IE = ~BIT0;
 	eint();
 	TACTL |= MC1; /* Start the Timer in Continuous mode. */
@@ -202,6 +216,7 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 	INT8U P4Buffer;
 	InputEvent msg;
 	OS_CPU_SR cpu_sr = 0;
+//	ServiceMsg msgV;
 
 	//désactiver les interruptions
 	P1IE = 0;
@@ -211,21 +226,27 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 	//récupérer les informations des boutons
 	Delayx100us(10);
 
+//	msgV.serviceType = SERV_FREQ;
+
 	msg.bEvent  = BUTERR;
 	msg.msgType = IT_BUTTON;
 	P4Buffer = P4IN;
 
 	if (!(P4Buffer & 0x10)) {
 		msg.bEvent = BUT0;
+//		msgV.val = 0;
 	}
 	if (!(P4Buffer & 0x20)) {
 		msg.bEvent = BUT1;
+//		msgV.val = 2;
 	}
 	if (!(P4Buffer & 0x40)) {
 		msg.bEvent = BUT2;
+//		msgV.val = 5;
 	}
 	if (!(P4Buffer & 0x80)) {
 		msg.bEvent = BUT3;
+//		msgV.val = 7;
 	}
 	//Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
 	//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
@@ -234,6 +255,7 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 	if (msg.bEvent != BUTERR) {
 		err = OSQPost(ISR_To_TI_MsgQ, (void *) &msg);
 	}
+	//OSQPost(GM_To_SO_MsgQ, (void *) &msgV);
 	//OSIntExit(); DOESNT WORK
 	OS_EXIT_CRITICAL();
 
