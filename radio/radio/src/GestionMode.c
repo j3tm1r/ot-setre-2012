@@ -64,8 +64,20 @@ static OS_EVENT *TI_To_GM_MsgQ;
 static OS_EVENT *GM_To_SO_MsgQ;
 static OS_EVENT *GM_To_SL_MsgQ;
 
+//
+static char strDefault[]= "VEILLE";
+static char strMRInit[] = "MR_INIT";
+static char strMRFIN[] 	= "MR_FIN";
+
+static char strMRDefault[]= "MR_DEFAULT";
+static char strMRFreq[]   = "MR_SET_FREQ";
+static char strMRVolume[] = "MR_SET_VOL";
+static char strMSNbUtil[] = "MS_NB_UTIL";
+static char strMSVolume[] = "MS_VOLUME";
+static char strMSStation[]= "MS_STATION";
+
+
 // Helpers
-static ServiceMsg screenService;
 
 char stringBuffer[N_CHAR_PER_LINE * N_LINE + 2];
 
@@ -96,7 +108,6 @@ extern INT8S GM_To_SL_CmdBuf;
 //////////////////////////////////////////////////////////////////  PUBLIC
 //---------------------------------------------------- Fonctions publiques
 
-
 void GestionMode(void *parg) {
 
 	task_GM_Param *param = (task_GM_Param*) parg;
@@ -119,9 +130,6 @@ void GestionMode(void *parg) {
 
 void GestionModeStep(INT16U event) {
 
-	char strMRInit[] = "MR_INIT";
-	char strMRFIN[] = "MR_FIN";
-
 	ServiceMsg *servMsg;
 	StatMsg *statMsg;
 
@@ -130,9 +138,7 @@ void GestionModeStep(INT16U event) {
 		if (event == CMD0) {
 			mode = MR_INIT;
 
-//			// Notify stat logger that we enter radio mode
-//			statData.msgType = STAT_INIT;
-
+			// Notify stat logger that we enter radio mode
 			statMsg = (StatMsg*) GetNextSlot(GM_To_SL_CmdBuf);
 			statMsg->msgType = STAT_INIT;
 			OSQPost(GM_To_SL_MsgQ, (void *) statMsg);
@@ -177,15 +183,17 @@ void GestionModeStep(INT16U event) {
 		if (event == CMD0) {
 			mode = MR_FIN;
 
-//			// Notify stat logger that we leave radio mode
-//			statData.msgType = STAT_END;
-//			OSQPost(GM_To_SL_MsgQ, (void *) &statData);
-//
-//			// Stop radio
-//			// Set volume to 0
-//			serviceData.serviceType = SERV_VOLUME;
-//			serviceData.val = 0;
-//			OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
+			// Notify stat logger that we leave radio mode
+			statMsg = (StatMsg*) GetNextSlot(GM_To_SL_CmdBuf);
+			statMsg->msgType = STAT_END;
+			OSQPost(GM_To_SL_MsgQ, (void *) statMsg);
+
+			// Stop radio
+			// Set volume to 0
+			servMsg = (ServiceMsg*) GetNextSlot(GM_To_SO_CmdBuf);
+			servMsg->serviceType = SERV_VOLUME;
+			servMsg->val = 0;
+			OSQPost(GM_To_SO_MsgQ, (void *) servMsg);
 
 			sendToScreen(strMRFIN);
 		}
@@ -213,11 +221,8 @@ void GestionModeStep(INT16U event) {
 
 void GestionRadio(INT16U event) {
 
-	char strDefault[] = "MR_DEFAULT";
-	char strFreq[] = "MR_SET_FREQ";
-	char strVolume[] = "MR_SET_VOL";
-	ServiceMsg serviceData;
-	StatMsg statData;
+	ServiceMsg *servMsg;
+	StatMsg *statMsg;
 
 	RadioModeStep(event);
 
@@ -226,7 +231,7 @@ void GestionRadio(INT16U event) {
 		//memcpy(stringBuffer, strDefault, strlen(strDefault));
 		// TODO print radio and volume information
 		//stringBuffer
-		sendToScreen(strDefault);
+		sendToScreen(strMRDefault);
 		break;
 	case MR_SET_FREQ:
 		if (event == CMD2) {
@@ -237,18 +242,20 @@ void GestionRadio(INT16U event) {
 			// error: should never happen
 		}
 		// Set frequency
-		serviceData.serviceType = SERV_FREQ;
-		serviceData.val = currentFreqId;
-		OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
+		servMsg = (ServiceMsg*) GetNextSlot(GM_To_SO_CmdBuf);
+		servMsg->serviceType = SERV_FREQ;
+		servMsg->val = currentFreqId;
+		OSQPost(GM_To_SO_MsgQ, (void *) servMsg);
 		// Send current freq id to logger
-		statData.msgType = STAT_LOG;
-		statData.freq = currentFreqId;
-		OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+		statMsg = (StatMsg*) GetNextSlot(GM_To_SL_CmdBuf);
+		statMsg->msgType = STAT_LOG;
+		statMsg->freq = currentFreqId;
+		OSQPost(GM_To_SL_MsgQ, (void *) statMsg);
 
 		//memcpy(stringBuffer, strFreq, strlen(strFreq));
 		// TODO print frequency information
 		//stringBuffer
-		sendToScreen(strFreq);
+		sendToScreen(strMRFreq);
 		break;
 	case MR_SET_VOL:
 		if (event == CMD2) {
@@ -259,17 +266,19 @@ void GestionRadio(INT16U event) {
 			// error: should never happen
 		}
 		// Set volume
-		serviceData.serviceType = SERV_VOLUME;
-		serviceData.val = currentVolLvl;
-		OSQPost(GM_To_SO_MsgQ, (void *) &serviceData);
+		servMsg = (ServiceMsg*) GetNextSlot(GM_To_SO_CmdBuf);
+		servMsg->serviceType = SERV_VOLUME;
+		servMsg->val = currentVolLvl;
+		OSQPost(GM_To_SO_MsgQ, (void *) servMsg);
 		// Send current volume level to logger
-		statData.msgType = STAT_LOG;
-		statData.volumeLvl = currentVolLvl;
-		OSQPost(GM_To_SL_MsgQ, (void *) &statData);
+		statMsg = (StatMsg*) GetNextSlot(GM_To_SL_CmdBuf);
+		statMsg->msgType = STAT_LOG;
+		statMsg->volumeLvl = currentVolLvl;
+		OSQPost(GM_To_SL_MsgQ, (void *) statMsg);
 
 		//memcpy(stringBuffer, strVolume, strlen(strVolume));
 		// TODO print volume information and set bargraph
-		sendToScreen(strVolume);
+		sendToScreen(strMRVolume);
 		break;
 	default:
 		break;
@@ -301,17 +310,13 @@ void RadioModeStep(INT16U event) {
 
 void GestionStat(INT16U event) {
 
-	char strNbUtil[] = "MS_NB_UTIL";
-	char strVolume[] = "MS_VOLUME";
-	char strStation[] = "MS_STATION";
-
 	StatModeStep(event);
 
 	switch (modeStat) {
 	case MS_NB_UTIL:
 
 		//memcpy(stringBuffer, strNbUtil, strlen(strNbUtil));
-		sendToScreen(strNbUtil);
+		sendToScreen(strMSNbUtil);
 
 		break;
 	case MS_VOLUME:
@@ -321,7 +326,7 @@ void GestionStat(INT16U event) {
 		//TODO Display data
 
 		//memcpy(stringBuffer, strVolume, strlen(strVolume));
-		sendToScreen(strVolume);
+		sendToScreen(strMSVolume);
 
 		break;
 	case MS_STATION:
@@ -331,7 +336,7 @@ void GestionStat(INT16U event) {
 		//TODO Display data
 
 		//memcpy(stringBuffer, strStation, strlen(strStation));
-		sendToScreen(strStation);
+		sendToScreen(strMSStation);
 
 		break;
 	default:
@@ -341,7 +346,6 @@ void GestionStat(INT16U event) {
 }
 
 void ModeVeille() {
-	char strDefault[] = "VEILLE";
 	// LPM
 	sendToScreen(strDefault);
 }
@@ -375,9 +379,11 @@ void StatModeStep(INT16U event) {
 }
 
 void sendToScreen(const char *str) {
-	screenService.serviceType = SERV_LCD;
-	screenService.msg.pBuffer = (void *) str;
-	screenService.msg.size = strlen(str);
-	OSQPost(GM_To_SO_MsgQ, (void *) &screenService);
+	ServiceMsg *servMsg;
+	servMsg = (ServiceMsg*) GetNextSlot(GM_To_SO_CmdBuf);
+	servMsg->serviceType = SERV_LCD;
+	servMsg->msg.pBuffer = (void *) str;
+	servMsg->msg.size = strlen(str);
+	OSQPost(GM_To_SO_MsgQ, (void *) servMsg);
 }
 
