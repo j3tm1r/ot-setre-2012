@@ -57,7 +57,7 @@ int count_int_me;
 //Valeur assigné au message en cas d'erreur de lecture pendant les interruptions
 #define InputError		4
 
-#define	MSG_Q_SIZE		2
+#define	MSG_Q_SIZE		5
 /*
  *********************************************************************************************************
  *                                               VARIABLES
@@ -66,7 +66,7 @@ int count_int_me;
 
 static OS_STK StkTraitementInput[TASK_STK_SIZE];
 static OS_STK StkGestionMode[TASK_STK_SIZE];
-static OS_STK StkServiceOutput[TASK_STK_SIZE];
+static OS_STK StkServiceOutput[TASK_STK_SIZE*3];
 static OS_STK StkLoggerStat[TASK_STK_SIZE];
 static INT16U VolumeTest;
 
@@ -182,7 +182,7 @@ int main(void) {
 
 	prio = 11;
 	OSTaskCreate(ServiceOutput, (void *) GM_To_SO_MsgQ,
-			&StkServiceOutput[TASK_STK_SIZE - 1], prio);
+			&StkServiceOutput[TASK_STK_SIZE*3 - 1], prio);
 
 	task_SL_Param slParam;
 	slParam.GM_To_SL_MsgQ = GM_To_SL_MsgQ;
