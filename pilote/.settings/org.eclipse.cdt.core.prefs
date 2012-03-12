@@ -1,0 +1,10 @@
+#Mon Feb 27 10:49:24 CET 2012
+eclipse.preferences.version=1
+environment/project/0.1166467750/LD_LIBRARY_PATH/delimiter=\:
+environment/project/0.1166467750/LD_LIBRARY_PATH/operation=replace
+environment/project/0.1166467750/LD_LIBRARY_PATH/value=/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.0/jre/lib/i386/client\:/usr/lib/jvm/java-1.6.0-openjdk-1.6.0.0/jre/lib/i386\:${LD_LIBRARY_PATH}\:/usr/local/msp430-pytools/lib
+environment/project/0.1166467750/PATH/delimiter=\:
+environment/project/0.1166467750/PATH/operation=replace
+environment/project/0.1166467750/PATH/value=/usr/local/msp430-gcc-4.4.4/bin\:/usr/lib/qt-3.3/bin\:/usr/kerberos/bin\:/usr/local/bin\:/usr/bin\:/bin\:/usr/X11R6/bin\:/usr/NX/bin\:/usr/local/msp430-pytools/bin\:$PATH
+environment/project/0.1166467750/append=true
+environment/project/0.1166467750/appendContributed=true
