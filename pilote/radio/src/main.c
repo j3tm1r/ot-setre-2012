@@ -28,6 +28,7 @@ int count_int_me;
 #include "TraitementInput.h"
 #include "Display.h"
 #include "util/cmdBuffer.h"
+#include "drv_eeprom.h"
 
 /*
  *********************************************************************************************************
@@ -95,6 +96,7 @@ interrupt (PORT2_VECTOR) TelInterrupt(void);
  *                                                MAIN
  *********************************************************************************************************
  */
+
 
 int main(void) {
 
@@ -233,6 +235,10 @@ int main(void) {
 	P1IE = ~BIT0;
 	eint();
 	TACTL |= MC1; /* Start the Timer in Continuous mode. */
+
+
+
+
 	OSStart();
 	return (0);
 }

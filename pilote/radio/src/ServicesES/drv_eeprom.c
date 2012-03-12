@@ -9,9 +9,11 @@
 //===================================//
 
 #include "drv_eeprom.h"
-#include <includes.h>
-#include "radio_cfg.h"
-#include <msp430/common.h>
+#include "includes.h"
+#include <io.h>
+#include <signal.h>
+#include <iomacros.h>
+#include <msp430x14x.h>
 
 //P4.1  SCL
 //P4.0  SDA
@@ -33,7 +35,7 @@
 
 
 
-// Attention � bien calibrer la tempo pour la fr�quence i2c
+// Attention à bien calibrer la tempo pour la frequence i2c
 static void delay_iic(unsigned int a)
 {
   unsigned int k;
@@ -183,11 +185,10 @@ static void acknowledge(void)
   SCL_0;
 }
 
-// Lecture d'un octet � une adresse donn�e
+// Lecture d'un octet à une adresse donnee
 unsigned char eeprom_random_read(unsigned int address)
 {
-	OS_CPU_SR cpu_sr;
-
+	OS_CPU_SR cpu_sr = 0;
 	unsigned char data = 0;
 	unsigned char addr_hi  = 0;
 	unsigned char addr_lo = 0;
@@ -222,10 +223,9 @@ unsigned char eeprom_random_read(unsigned int address)
 // Lecture d'un octet au pointeur EEPROM
 unsigned char eeprom_current_read(void)
 {
-	OS_CPU_SR cpu_sr;
-
 	unsigned char data = 0;
 	//unsigned char i = 0;
+	OS_CPU_SR cpu_sr = 0;
 
 	OS_ENTER_CRITICAL();				// Disable Interrupts
 
@@ -241,10 +241,10 @@ unsigned char eeprom_current_read(void)
 	return(data);
 }
 
-// �criture d'un octet � l'adesse sp�cifi�e
+// Ecriture d'un octet à l'adesse specifiee
 void eeprom_byte_write(	unsigned int address, unsigned char data)
 {
-	OS_CPU_SR cpu_sr;
+	OS_CPU_SR cpu_sr = 0;
 	unsigned char addr_hi  = 0;
 	unsigned char addr_lo = 0;
 	addr_lo  = (unsigned char)address & 0xFF;				// get LSB
@@ -270,11 +270,12 @@ void eeprom_byte_write(	unsigned int address, unsigned char data)
 
 int eeprom_ack_polling(void)
 {
-	OS_CPU_SR cpu_sr;
+	OS_CPU_SR cpu_sr = 0;
 	OS_ENTER_CRITICAL();
 	start();						// start condition
 	write_byte(I2C_ADDR_WRITE); 	// send ctrl byte (write mode)
-	return(receive_ack());			// wait for ACK, 0 if ACK, 1 if NACK
 	OS_EXIT_CRITICAL();
+	return(receive_ack());			// wait for ACK, 0 if ACK, 1 if NACK
 }
+
 
