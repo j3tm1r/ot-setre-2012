@@ -11,14 +11,25 @@
 #include    <os_cpu.h>
 
 #define CMD_BUFFER_NMAX 	5
+#define FIFO					// to map OSQueues
 
-INT8S InitCmdBuffer(INT8U nSlot, INT8U slotSize);
+INT16S InitCmdBuffer(INT8U nSlot, INT8U slotSize);
 // returns a handle on a CmdBuffer or -1 in case of error
 
-void *GetNextSlot(INT8S cmdBufHandle);
+#ifdef FIFO
+
+INT8S Queue(INT16S cmdBufHandle, void *val);
+
+void *DeQueue(INT16S cmdBufHandle);
+
+#else
+
+void *GetNextSlot(INT16S cmdBufHandle);
 // returns a pointer on an available slot
 
-INT8S DestroyCmdBuffer(INT8S cmdBufHandle);
+#endif
+
+INT8S DestroyCmdBuffer(INT16S cmdBufHandle);
 // Destroys the given command buffer
 
 

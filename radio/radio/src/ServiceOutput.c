@@ -9,6 +9,7 @@
 #include "ServiceOutput.h"
 #include "Display.h"
 #include "includes.h"
+#include "util/cmdBuffer.h"
 
 #define		SPI_FREQ	0
 #define 	SPI_VOL		1
@@ -68,11 +69,16 @@ void ServiceOutput(void *parg) {
 
 		OS_EVENT *msgQServiceOutput = (OS_EVENT*) parg;
 		INT8U err;
+		INT16S bufHandle;
 		ServiceMsg* data;
 
 		for (;;) {
 
-			data = (ServiceMsg*) OSQPend (msgQServiceOutput, 0, &err);
+			bufHandle = (INT16S) OSQPend (msgQServiceOutput, 0, &err);
+			data = (ServiceMsg *) DeQueue(bufHandle);
+			if (data == 0) {
+				continue;
+			}
 
 			switch(data->serviceType) {
 			case SERV_BARGRAPH:
