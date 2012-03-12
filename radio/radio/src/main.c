@@ -98,17 +98,17 @@ interrupt (PORT2_VECTOR) TelInterrupt(void);
 
 int main(void) {
 
-	WDTCTL = WDTCTL_INIT; //Init watchdog timer
+	WDTCTL = WDTCTL_INIT; 	// Init watchdog timer
 
-	P6OUT = P1OUT_INIT; //Init output data of port1
-	P6OUT = P1OUT_INIT; //Init output data of port2
+	P6OUT = P1OUT_INIT; 	// Init output data of port1
+	P6OUT = P1OUT_INIT; 	// Init output data of port2
 
-	P6SEL = P1SEL_INIT; //Select port or module -function on port1
-	P6SEL = P2SEL_INIT; //Select port or module -function on port2
+	P6SEL = P1SEL_INIT; 	// Select port or module -function on port1
+	P6SEL = P2SEL_INIT; 	// Select port or module -function on port2
 
-	P6DIR = P1DIR_INIT; //Init port direction register of port1
+	P6DIR = 0xFF; 			// Init port direction register of port6
 
-	P1IES = P1IES_INIT; //init port interrupts
+	P1IES = P1IES_INIT; 	// init port interrupts
 	P2IES = P2IES_INIT;
 
 	P2IE = P2IE_INIT;
