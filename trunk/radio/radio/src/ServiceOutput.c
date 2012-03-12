@@ -39,6 +39,19 @@ static INT16U volumeMap[] = {
 	255
 };
 
+// Bargraph
+static INT16U bargraphMap[] = {
+	0,
+	0x01,
+	0x03,
+	0x07,
+	0x0F,
+	0x1F,
+	0x3F,
+	0x7F,
+	0xFF
+};
+
 
 // Declarations
 // Services
@@ -99,8 +112,8 @@ void ServiceOutput(void *parg) {
 				}
 				break;
 			case SERV_VOLUME:
-				//setVolumeByLvl(data->val);
-				setVolume(VOLUME_CMD, data->val);
+				setVolumeByLvl(data->val);
+				setBargraph(data->val);
 				break;
 			default:
 				// Error
@@ -111,35 +124,14 @@ void ServiceOutput(void *parg) {
 
 }
 
-INT8S setBargraph(INT8U cmd) {
+INT8S setBargraph(INT8U lvl) {
 
-	if(cmd>255) {
+	if(lvl >= VOL_NUM) {
 		return -1;
 	}
 
 	INT8U i;
-	INT8U etatBargraph = 0;
-
-	if(cmd<32)
-		etatBargraph = 0x01;
-	else if(cmd<64)
-		etatBargraph = 0x03;
-	else if(cmd<96)
-		etatBargraph = 0x07;
-	else if(cmd<128)
-		etatBargraph = 0x0F;
-	else if(cmd<160)
-		etatBargraph = 0x1F;
-	else if(cmd<192)
-		etatBargraph = 0x3F;
-	else if(cmd<224)
-		etatBargraph = 0x7F;
-	else if(cmd<256)
-		etatBargraph = 0xFF;
-	else {
-		etatBargraph = 0;
-		return -1;
-	}
+	INT8U etatBargraph = bargraphMap[lvl];
 
 	//Balayage et configuration de chaque LED du Bargraph
 	for(i=0;i<8;i++) {
@@ -186,7 +178,12 @@ INT8S setFrequency(INT16U nb) {
 }
 
 void  setVolumeByLvl(INT8U volLvl) {
-	INT16U volume = volumeMap[ volLvl % VOL_NUM];
+	INT16U volume;
+	if (volLvl >= VOL_NUM ) {
+		volume = volumeMap[VOL_NUM-1];
+	} else {
+		volume = volumeMap[volLvl];
+	}
 	setVolume(VOLUME_CMD, volume);
 }
 
