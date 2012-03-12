@@ -198,9 +198,9 @@ int main(void) {
 	//Set SWRST
 	U0CTL |= SWRST;
 	//Initialize registers
-	BCSCTL2 |= SELS; //select XT2CLK as SMCLK source
-	BCSCTL2 |= DIVS0;
-	BCSCTL2 |= DIVS1; //divise SSMCLK par 8 -> réglée à 1MHz
+//	BCSCTL2 |= SELS; //select XT2CLK as SMCLK source
+//	BCSCTL2 |= DIVS0;
+//	BCSCTL2 |= DIVS1; //divise SSMCLK par 8 -> réglée à 1MHz
 	U0TCTL |= SSEL0;
 	U0TCTL |= SSEL1; //select SMCLK pour l'IRDA
 	U0BR0 = 0x36;
