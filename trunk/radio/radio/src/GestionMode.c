@@ -239,6 +239,9 @@ void GestionRadio(INT16U event) {
 		sendToScreen(strMRDefault);
 		break;
 	case MR_SET_FREQ:
+		if (event == CMD1){
+			sendToScreen(strMRFreq);
+		}
 		if (event == CMD2) {
 			currentFreqId = (FREQ_NUM + currentFreqId - 1) % FREQ_NUM;
 		} else if (event == CMD3) {
@@ -259,9 +262,13 @@ void GestionRadio(INT16U event) {
 		OSQPost(GM_To_SL_MsgQ, (void *) statMsg);
 
 		// TODO print frequency information
-		sendToScreen(strMRFreq);
+		//sendToScreen(strMRFreq);
 		break;
 	case MR_SET_VOL:
+		if (event == CMD1){
+			sendToScreen(strMRVolume);
+		}
+
 		if (event == CMD2) {
 			if(currentVolLvl != 0) {
 				currentVolLvl -= 1;
@@ -292,7 +299,7 @@ void GestionRadio(INT16U event) {
 
 		//memcpy(stringBuffer, strVolume, strlen(strVolume));
 		// TODO print volume information and set bargraph
-		sendToScreen(strMRVolume);
+		//sendToScreen(strMRVolume);
 		break;
 	default:
 		break;
