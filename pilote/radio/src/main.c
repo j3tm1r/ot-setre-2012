@@ -98,17 +98,17 @@ interrupt (PORT2_VECTOR) TelInterrupt(void);
 
 int main(void) {
 
-	WDTCTL = WDTCTL_INIT; 	// Init watchdog timer
+	WDTCTL = WDTCTL_INIT; // Init watchdog timer
 
-	P6OUT = P1OUT_INIT; 	// Init output data of port1
-	P6OUT = P1OUT_INIT; 	// Init output data of port2
+	P6OUT = P1OUT_INIT; // Init output data of port1
+	P6OUT = P1OUT_INIT; // Init output data of port2
 
-	P6SEL = P1SEL_INIT; 	// Select port or module -function on port1
-	P6SEL = P2SEL_INIT; 	// Select port or module -function on port2
+	P6SEL = P1SEL_INIT; // Select port or module -function on port1
+	P6SEL = P2SEL_INIT; // Select port or module -function on port2
 
-	P6DIR = 0xFF; 			// Init port direction register of port6
+	P6DIR = 0xFF; // Init port direction register of port6
 
-	P1IES = P1IES_INIT; 	// init port interrupts
+	P1IES = P1IES_INIT; // init port interrupts
 	P2IES = P2IES_INIT;
 
 	P2IE = P2IE_INIT;
@@ -160,9 +160,9 @@ int main(void) {
 	GM_To_SL_MsgQ = OSQCreate(&GM_To_SL_Buffer[0], MSG_Q_SIZE);
 
 	ISR_To_TI_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(InputEvent));
-	TI_To_GM_CmdBuf  = InitCmdBuffer(MSG_Q_SIZE, sizeof(InputCmd));
-	GM_To_SO_CmdBuf  = InitCmdBuffer(MSG_Q_SIZE, sizeof(ServiceMsg));
-	GM_To_SL_CmdBuf  = InitCmdBuffer(MSG_Q_SIZE, sizeof(StatMsg));
+	TI_To_GM_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(InputCmd));
+	GM_To_SO_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(ServiceMsg));
+	GM_To_SL_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(StatMsg));
 
 	INT8U prio = 20;
 	task_TI_Param tiParam;
@@ -191,6 +191,39 @@ int main(void) {
 	OSTaskCreate(StatLogger, (void *) &slParam,
 			&StkLoggerStat[TASK_STK_SIZE - 1], prio);
 
+	/*
+	 * Configuration for sending data through irda
+	 * */
+
+	//Set SWRST
+	U0CTL |= SWRST;
+	//Initialize registers
+	BCSCTL2 |= SELS; //select XT2CLK as SMCLK source
+	BCSCTL2 |= DIVS0;
+	BCSCTL2 |= DIVS1; //divise SSMCLK par 8 -> réglée à 1MHz
+	U0TCTL |= SSEL0;
+	U0TCTL |= SSEL1; //select SMCLK pour l'IRDA
+	U0BR0 = 0x36;
+	U0BR1 = 0;
+	U0MCTL = 0x6B; //Baud Rate 19200
+	/*sending data*/
+	U0CTL = 0b00011001;
+	U0TCTL = 0b00110000;
+	//Enable USART module via the MEx SFRs (URXEx and/or UTXEx)
+
+	ME1 |= UTXE0;
+	ME1 &= ~URXE0;
+	//Clear SWRST
+	U0CTL &= ~SWRST;
+	//Enable interrupts
+	IE1 &= ~UTXIE0;
+	IE1 &= ~URXIE0;
+
+
+
+	/*
+	 * */
+
 	clearDisplay();
 	printString("Start OS");
 	count_int_me = 0;
@@ -209,7 +242,6 @@ int main(void) {
  *                                            STARTUP TASK
  *********************************************************************************************************
  */
-
 
 interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 
@@ -230,21 +262,29 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 //	msgV.serviceType = SERV_FREQ;
 
 	msg = (InputEvent *) GetNextSlot(ISR_To_TI_CmdBuf);
-	msg->bEvent  = BUTERR;
+	msg->bEvent = BUTERR;
 	msg->msgType = IT_BUTTON;
 	P4Buffer = P4IN;
 
 	if (!(P4Buffer & 0x10)) {
 		msg->bEvent = BUT0;
+		while(!UTXIFG0);
+		U0TXBUF = 0;
 	}
 	if (!(P4Buffer & 0x20)) {
 		msg->bEvent = BUT1;
+		while(!UTXIFG0);
+		U0TXBUF = 1;
 	}
 	if (!(P4Buffer & 0x40)) {
 		msg->bEvent = BUT2;
+		while(!UTXIFG0);
+		U0TXBUF = 2;
 	}
 	if (!(P4Buffer & 0x80)) {
 		msg->bEvent = BUT3;
+		while(!UTXIFG0);
+		U0TXBUF = 3;
 	}
 	//Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
 	//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
