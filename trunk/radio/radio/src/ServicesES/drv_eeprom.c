@@ -11,7 +11,7 @@
 #include "drv_eeprom.h"
 #include <includes.h>
 #include "radio_cfg.h"
-#include <common.h>
+#include <msp430/common.h>
 
 //P4.1  SCL
 //P4.0  SDA

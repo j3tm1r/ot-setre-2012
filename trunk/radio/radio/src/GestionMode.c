@@ -18,6 +18,7 @@
 #include "includes.h"
 #include "Display.h"
 #include "util/cmdBuffer.h"
+#include "ServicesES/drv_eeprom.h"
 
 ///////////////////////////////////////////////////////////////////  PRIVE
 //------------------------------------------------------------- Constantes
