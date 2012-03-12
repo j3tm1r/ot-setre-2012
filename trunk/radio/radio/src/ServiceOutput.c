@@ -93,7 +93,7 @@ void ServiceOutput(void *parg) {
 				clearDisplay();
 				char *str = data->msg.pBuffer;
 				char screenBuffer[N_CHAR_PER_LINE * N_LINE + 2];	// count '\0' and '\n'
-				UNUSED(screenBuffer);
+
 				INT8U strLen = strlen(str);//data->msg.size;
 				int i = 0;
 				int j = 0;
