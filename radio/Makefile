@@ -33,7 +33,8 @@ OBJECTS         = $(OBJDIR)/app.o				\
 		  		  $(OBJDIR)/GestionMode.o		\
 		  		  $(OBJDIR)/StatLogger.o 		\
 		  		  $(OBJDIR)/TraitementInput.o	\
-		  		  $(OBJDIR)/cmdBuffer.o
+		  		  $(OBJDIR)/cmdBuffer.o			\
+		  		  $(OBJDIR)/drv_eeprom.o
 		  		  
                   
 CPU             = msp430x149
@@ -111,6 +112,9 @@ $(OBJDIR)/TraitementInput.o : $(SRCDIR)/TraitementInput.c
 $(OBJDIR)/cmdBuffer.o : $(SRCDIR)/util/cmdBuffer.c
 	$(CC) $(CFLAGS) -o $@ $<
 	
+$(OBJDIR)/drv_eeprom.o : $(SERVDIR)/drv_eeprom.c
+	$(CC) $(CFLAGS) -o $@ $<
+		
 #################################	
 	
 $(OBJDIR)/os_cpu_c.o : $(PORTDIR)/os_cpu_c.c
