@@ -276,5 +276,6 @@ int eeprom_ack_polling(void)
 	write_byte(I2C_ADDR_WRITE); 	// send ctrl byte (write mode)
 	return(receive_ack());			// wait for ACK, 0 if ACK, 1 if NACK
 	OS_EXIT_CRITICAL();
+	return 0;
 }
 
