@@ -57,7 +57,7 @@ int count_int_me;
 //Valeur assigné au message en cas d'erreur de lecture pendant les interruptions
 #define InputError		4
 
-#define	MSG_Q_SIZE		10
+#define	MSG_Q_SIZE		2
 /*
  *********************************************************************************************************
  *                                               VARIABLES
@@ -70,10 +70,10 @@ static OS_STK StkServiceOutput[TASK_STK_SIZE];
 static OS_STK StkLoggerStat[TASK_STK_SIZE];
 static INT16U VolumeTest;
 
-INT8S ISR_To_TI_CmdBuf;
-INT8S TI_To_GM_CmdBuf;
-INT8S GM_To_SO_CmdBuf;
-INT8S GM_To_SL_CmdBuf;
+INT16S ISR_To_TI_CmdBuf;
+INT16S TI_To_GM_CmdBuf;
+INT16S GM_To_SO_CmdBuf;
+INT16S GM_To_SL_CmdBuf;
 
 OS_EVENT *ISR_To_TI_MsgQ;
 OS_EVENT *TI_To_GM_MsgQ;
@@ -215,7 +215,7 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 
 	INT8U err;
 	INT8U P4Buffer;
-	InputEvent *msg;
+	InputEvent msg;
 	OS_CPU_SR cpu_sr = 0;
 //	ServiceMsg msgV;
 
@@ -229,28 +229,29 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 
 //	msgV.serviceType = SERV_FREQ;
 
-	msg = (InputEvent *) GetNextSlot(ISR_To_TI_CmdBuf);
-	msg->bEvent  = BUTERR;
-	msg->msgType = IT_BUTTON;
+	msg.bEvent  = BUTERR;
+	msg.msgType = IT_BUTTON;
 	P4Buffer = P4IN;
 
 	if (!(P4Buffer & 0x10)) {
-		msg->bEvent = BUT0;
+		msg.bEvent = BUT0;
 	}
 	if (!(P4Buffer & 0x20)) {
-		msg->bEvent = BUT1;
+		msg.bEvent = BUT1;
 	}
 	if (!(P4Buffer & 0x40)) {
-		msg->bEvent = BUT2;
+		msg.bEvent = BUT2;
 	}
 	if (!(P4Buffer & 0x80)) {
-		msg->bEvent = BUT3;
+		msg.bEvent = BUT3;
 	}
 	//Pour éviter de rester bloqué en cas d'erreur on incrémente une variable et on la compare avec une valeur arbitraire
 	//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
 
-	if (msg->bEvent != BUTERR) {
-		err = OSQPost(ISR_To_TI_MsgQ, (void *) msg);
+	if (msg.bEvent != BUTERR) {
+		if(Queue(ISR_To_TI_CmdBuf, &msg) == 0) {
+			err = OSQPost(ISR_To_TI_MsgQ, (void *) ISR_To_TI_CmdBuf);
+		}
 	}
 	//OSQPost(GM_To_SO_MsgQ, (void *) &msgV);
 	//OSIntExit(); DOESNT WORK
