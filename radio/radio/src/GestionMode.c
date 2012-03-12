@@ -263,9 +263,13 @@ void GestionRadio(INT16U event) {
 		break;
 	case MR_SET_VOL:
 		if (event == CMD2) {
-			currentVolLvl = (VOL_NUM + currentVolLvl - 1) % VOL_NUM;
+			if(currentVolLvl != 0) {
+				currentVolLvl -= 1;
+			}
 		} else if (event == CMD3) {
-			currentVolLvl = (currentVolLvl + 1) % VOL_NUM;
+			if(currentVolLvl != VOL_NUM-1) {
+				currentVolLvl += 1;
+			}
 		} else {
 			// CMD1
 			break;
