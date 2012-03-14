@@ -7,6 +7,7 @@
 
 #include "cmdBuffer.h"
 
+#include <os_cpu.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -36,6 +37,8 @@ void *GetNextSlot(INT16S cmdBufHandle);
 
 
 INT16S InitCmdBuffer(INT8U nSlot, INT8U slotSize) {
+	OS_CPU_SR  cpu_sr;
+	OS_ENTER_CRITICAL();
 	if(nCmdBuffer == CMD_BUFFER_NMAX) {
 		return -1;
 	}
@@ -65,13 +68,21 @@ INT16S InitCmdBuffer(INT8U nSlot, INT8U slotSize) {
 	// increment CmdBuffer use counter
 	++nCmdBuffer;
 
+	OS_EXIT_CRITICAL();
+
 	return i;
 }
 
 void *GetNextSlot(INT16S cmdBufHandle) {
-	if(cmdBufHandle < 0 || cmdBufHandle >= CMD_BUFFER_NMAX ) {
+#ifndef FIFO
+	OS_CPU_SR  cpu_sr;
+	OS_ENTER_CRITICAL();
+
+	if(cmdBufHandle < 0 || cmdBufHandle >= CMD_BUFFER_NMAX
+			|| requestedSlots [cmdBufHandle] == 0) {
 		return 0;
 	}
+#endif
 	void *nextSlot;
 	CmdBuffer *curBuf = &cmdBuffer[cmdBufHandle];
 
@@ -79,13 +90,20 @@ void *GetNextSlot(INT16S cmdBufHandle) {
 	curBuf->curChunk = (curBuf->curChunk + 1) % curBuf->nChunks;
 	nextSlot = curBuf->data + curBuf->curChunk * curBuf->chunkSize;
 
+#ifndef FIFO
+	OS_EXIT_CRITICAL();
+#endif
+
 	return nextSlot;
 }
 
 #ifdef FIFO
 
 INT8S Queue(INT16S hdl, void *val) {
-	if(hdl < 0 || hdl >= CMD_BUFFER_NMAX ) {
+	OS_CPU_SR  cpu_sr;
+	OS_ENTER_CRITICAL();
+	if(hdl < 0 || hdl >= CMD_BUFFER_NMAX
+			|| requestedSlots [hdl] == 0) {
 		return -1;
 	}
 	INT8U fifoMaxSize = cmdBuffer[hdl].nChunks;
@@ -116,10 +134,13 @@ INT8S Queue(INT16S hdl, void *val) {
 
 	// Update fifo counter
 	cmdBuffer[hdl].fifoCounter++;
+	OS_EXIT_CRITICAL();
 	return 0;
 }
 
 void * DeQueue(INT16S hdl) {
+	OS_CPU_SR  cpu_sr;
+	OS_ENTER_CRITICAL();
 	if(hdl < 0 || hdl >= CMD_BUFFER_NMAX ) {
 		return 0;
 	}
@@ -133,12 +154,15 @@ void * DeQueue(INT16S hdl) {
 	cmdBuffer[hdl].fifoCounter--;
 
 	FifoNode *first = &cmdBuffer[hdl].fifoNode[fifoMaxSize-fifoCurSize];
+	OS_EXIT_CRITICAL();
 	return first->dataPtr;
 }
 
 #endif
 
 INT8S DestroyCmdBuffer(INT16S cmdBufHandle) {
+	OS_CPU_SR  cpu_sr;
+	OS_ENTER_CRITICAL();
 	if(cmdBufHandle < 0 || cmdBufHandle >= CMD_BUFFER_NMAX ) {
 		return -1;
 	}
@@ -151,6 +175,7 @@ INT8S DestroyCmdBuffer(INT16S cmdBufHandle) {
 	requestedSlots [cmdBufHandle] = 0;
 	--nCmdBuffer;
 
+	OS_EXIT_CRITICAL();
 	return 0;
 }
 
