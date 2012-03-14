@@ -35,7 +35,9 @@ int count_int_me;
  *********************************************************************************************************
  */
 
-#define  TASK_STK_SIZE                  64       /* Size of each task's stacks (# of OS_STK entries)   */
+#define  TASK_STK_SIZE                64       /* Size of each task's stacks (# of OS_STK entries)   */
+#define  GM_STK_SIZE                  128
+#define  SO_STK_SIZE                  160
 
 #define          STATUS_LED_ON      P2OUT &= ~BIT1    //STATUS_LED - P2.1
 #define          STATUS_LED_OFF     P2OUT |= BIT1     //STATUS_LED - P2.1	
@@ -65,8 +67,8 @@ int count_int_me;
  */
 
 static OS_STK StkTraitementInput[TASK_STK_SIZE];
-static OS_STK StkGestionMode[TASK_STK_SIZE];
-static OS_STK StkServiceOutput[TASK_STK_SIZE*3];
+static OS_STK StkGestionMode[GM_STK_SIZE];
+static OS_STK StkServiceOutput[SO_STK_SIZE];
 static OS_STK StkLoggerStat[TASK_STK_SIZE];
 static INT16U VolumeTest;
 
@@ -133,6 +135,17 @@ int main(void) {
 	//	il faut utiliser eint(); pour enable global interrupt, P1IE = 1 et P2IE = 1
 	/*Fin initialisation*/
 
+	// Configure port 4 pin 1 (I2C SCL)
+	P4DIR |=  BIT1;
+	P4OUT |=  BIT1;
+
+	// Init buzzer
+	P4SEL  = 0;
+	P4OUT &= ~BIT2;
+	P4OUT &= ~BIT3;
+	P4DIR |= BIT2;
+	P4DIR |= BIT3; //only buzzer pins are outputs
+
 	InitPortsDisplay();
 	initDisplay();
 	clearDisplay();
@@ -178,11 +191,11 @@ int main(void) {
 	gmParam.TI_To_GM_MsgQ = TI_To_GM_MsgQ;
 	prio = 9;
 	OSTaskCreate(GestionMode, (void *) &gmParam,
-			&StkGestionMode[TASK_STK_SIZE - 1], prio);
+			&StkGestionMode[GM_STK_SIZE - 1], prio);
 
 	prio = 11;
 	OSTaskCreate(ServiceOutput, (void *) GM_To_SO_MsgQ,
-			&StkServiceOutput[TASK_STK_SIZE*3 - 1], prio);
+			&StkServiceOutput[SO_STK_SIZE - 1], prio);
 
 	task_SL_Param slParam;
 	slParam.GM_To_SL_MsgQ = GM_To_SL_MsgQ;
