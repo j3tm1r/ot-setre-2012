@@ -137,6 +137,7 @@ void GestionModeStep(INT16U event) {
 
 	ServiceMsg servMsg;
 	StatMsg statMsg;
+	INT8S i;
 
 	switch (mode) {
 	case VEILLE:
@@ -188,6 +189,25 @@ void GestionModeStep(INT16U event) {
 		break;
 	case MR_INIT:
 		if (event == MR_INIT_ACK) {
+
+			for (i = 0; i < VOL_NUM; i++) {
+				servMsg.serviceType = SERV_BARGRAPH;
+				servMsg.val = i;
+				if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
+					OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
+				}
+				OSTimeDly(10);
+			}
+
+			for (i = VOL_NUM - 1; i >= currentVolLvl; i--) {
+				servMsg.serviceType = SERV_BARGRAPH;
+				servMsg.val = i;
+				if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
+					OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
+				}
+				OSTimeDly(10);
+			}
+
 			mode = MR;
 			// Transfer event to GestionRadio
 			GestionRadio(event);
@@ -219,6 +239,25 @@ void GestionModeStep(INT16U event) {
 		break;
 	case MR_FIN:
 		if (event == MR_FIN_ACK) {
+
+			for (i = currentVolLvl; i < VOL_NUM; i++) {
+				servMsg.serviceType = SERV_BARGRAPH;
+				servMsg.val = i;
+				if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
+					OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
+				}
+				OSTimeDly(10);
+			}
+
+			for (i = VOL_NUM; i > 0; i--) {
+				servMsg.serviceType = SERV_BARGRAPH;
+				servMsg.val = i - 1;
+				if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
+					OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
+				}
+				OSTimeDly(10);
+			}
+
 			mode = VEILLE;
 			ModeVeille();
 		}
@@ -239,8 +278,8 @@ void GestionModeStep(INT16U event) {
 
 void GestionRadio(INT16U event) {
 
-	ServiceMsg 	servMsg;
-	StatMsg 	statMsg;
+	ServiceMsg servMsg;
+	StatMsg statMsg;
 
 	RadioModeStep(event);
 
@@ -274,6 +313,49 @@ void GestionRadio(INT16U event) {
 		statMsg.freq = currentFreqId;
 		if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
 			OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
+		}
+
+		// TODO rm
+		INT8U k = 0;
+		INT8U byteToSend, recByte;
+		INT16U adress = 0;
+		INT8U data[5];
+		/*for (k=0; k < 5; ++k) {
+		 data[k] = k;
+		 }
+
+		 for (k=0; k < 5; ++k) {
+		 byteToSend = ((INT8U *) data)[k];
+		 eeprom_byte_write(adress, byteToSend);
+		 ++adress;
+		 }
+
+		 adress = 0;
+		 for (k=0; k < 5; ++k) {
+		 byteToSend = ((INT8U *) data)[k];
+		 recByte = eeprom_random_read(adress);
+		 clearDisplay();
+		 printString("Val ee : ");
+		 printDecimal(recByte);
+		 ++adress;
+		 }*/
+		//eeprom_byte_write(256, 10);
+		for (k = 0; k < 30; k++) {
+			eeprom_byte_write(k, 'A' + k);
+			//OSTimeDly(10);
+		}
+		//INT16U adr = 0b1101001011101010;
+
+//		eeprom_byte_write(adr, 'C');
+//		OSTimeDly(OS_TICKS_PER_SEC);
+
+		for (k = 0; k < 30; k++) {
+			recByte = eeprom_random_read(k);
+			OSTimeDly(100);
+			clearDisplay();
+			printString("Val ee : ");
+			printDecimal(recByte);
+
 		}
 
 		// TODO print frequency information

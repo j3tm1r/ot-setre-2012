@@ -120,10 +120,6 @@ void InitPortsDisplay(void) {
 	P3DIR |= BIT4; //enable TXD0 as output
 	P3DIR &= ~BIT5; //enable RXD0 as input
 
-	P4SEL = 0;
-	P4OUT = 0;
-	P4DIR = BIT2 | BIT3; //only buzzer pins are outputs
-
 	//P6SEL = 0x80;
 	//P6OUT = 0;
 	//P6DIR = 0x00;
