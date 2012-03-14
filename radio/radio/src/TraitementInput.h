@@ -27,15 +27,12 @@ enum TI_MsgType {
 };
 
 typedef struct InputEvent {
-	enum TI_MsgType msgType;
+    enum TI_MsgType msgType;
 
-	union {
-		INT16U bEvent;
-		struct {
-			void *pBuffer;
-			INT16U size;
-		} tcEvent;
-	};
+    union {
+        INT16U bEvent;
+        INT8U tcEvent;
+    };
 } InputEvent;
 
 void TraitementInput(void *parg);

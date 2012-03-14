@@ -316,10 +316,10 @@ void GestionRadio(INT16U event) {
 		}
 
 		// TODO rm
-		INT8U k = 0;
-		INT8U byteToSend, recByte;
-		INT16U adress = 0;
-		INT8U data[5];
+//		INT8U k = 0;
+//		INT8U byteToSend, recByte;
+//		INT16U adress = 0;
+//		INT8U data[5];
 		/*for (k=0; k < 5; ++k) {
 		 data[k] = k;
 		 }
@@ -340,23 +340,23 @@ void GestionRadio(INT16U event) {
 		 ++adress;
 		 }*/
 		//eeprom_byte_write(256, 10);
-		for (k = 0; k < 30; k++) {
-			eeprom_byte_write(k, 'A' + k);
-			//OSTimeDly(10);
-		}
+//		for (k = 0; k < 30; k++) {
+//			eeprom_byte_write(k, 'A' + k);
+//			//OSTimeDly(10);
+//		}
 		//INT16U adr = 0b1101001011101010;
 
 //		eeprom_byte_write(adr, 'C');
 //		OSTimeDly(OS_TICKS_PER_SEC);
 
-		for (k = 0; k < 30; k++) {
-			recByte = eeprom_random_read(k);
-			OSTimeDly(100);
-			clearDisplay();
-			printString("Val ee : ");
-			printDecimal(recByte);
-
-		}
+//		for (k = 0; k < 30; k++) {
+//			recByte = eeprom_random_read(k);
+//			OSTimeDly(100);
+//			clearDisplay();
+//			printString("Val ee : ");
+//			printDecimal(recByte);
+//
+//		}
 
 		// TODO print frequency information
 		//sendToScreen(strMRFreq);

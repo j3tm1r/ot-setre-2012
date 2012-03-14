@@ -210,6 +210,45 @@ int main(void) {
 
 	VolumeTest = 0;
 
+	/*
+	 * Configuration for sending data through irda
+	 * */
+
+	//Set SWRST
+	U0CTL = SWRST;
+
+	//Initialize registers
+
+//      BCSCTL2 |= SELS; //select XT2CLK as SMCLK source
+//      BCSCTL2 |= DIVS0;
+//      BCSCTL2 |= DIVS1; //divise SSMCLK par 8 -> réglée à 1MHz
+
+	U0CTL |= CHAR; // data on 8bits and we keep no parity, one stop bit, , disable listen mode, UART mode, no multi-processor protocol
+	U0TCTL |= SSEL0 | SSEL1; //select SMCLK pour l'IRDA
+	U0RCTL &= ~ ( URXEIE | URXWIE); //disable interrupts on receive erroneous character and wake-up
+	//Baud Rate 14399
+	U0BR1 = 0x02;
+	U0BR0 = 0x2C; //division of SMCLK by 556
+	U0MCTL = 0b00111111;
+	/*sending data*/
+	//U0CTL |= 0b00011001;
+	//U0TCTL |= 0b00010000;
+
+	//Enable USART module via the MEx SFRs (URXEx and/or UTXEx)
+	ME1 &= ~UTXE0;
+	ME1 |= URXE0;
+
+	//Clear SWRST
+	U0CTL &= ~SWRST;
+
+	//Enable interrupts
+	IE1 &= ~UTXIE0;
+	IE1 |= URXIE0;
+
+	/*
+	 * */
+
+
 	P1IE = ~BIT0;
 	eint();
 	TACTL |= MC1; /* Start the Timer in Continuous mode. */
@@ -276,22 +315,37 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 	P1IE = 0xFF;
 }
 
-//todo: a finir
-interrupt (PORT2_VECTOR) TelInterrupt(void) {
-	//désactiver les interruptions
-	P2IE = 0;
+interrupt (USART0RX_VECTOR ) TelInterrupt(void) {
+	INT8U recvd;
+	InputEvent msg;
+	OS_CPU_SR cpu_sr = 0;
+	INT8U err;
 
-	//remise des sémaphores à 0
-	P2IFG = 0;
+	OS_ENTER_CRITICAL(); //save cpu status register locally end restore it when finished
 
-	//récupération des infos -> lesquelles et comment? Comment marche la liaison série?
+	//Disable interrupts
+	IE1 &= ~UTXIE0;
+	IE1 &= ~URXIE0;
 
-	//transmission par MB ou MQ au traitement input
+	recvd = U0RXBUF;
+	//	msgV.serviceType = SERV_FREQ;
 
-	//réactiver les interruptions
-	P2IE = 1;
+	msg.msgType = IT_TLC;
+	msg.tcEvent = recvd;
+
+	if (Queue(ISR_To_TI_CmdBuf, &msg) == 0) {
+		err = OSQPost(ISR_To_TI_MsgQ, (void *) ISR_To_TI_CmdBuf);
+	}
+//	clearDisplay();
+//	printString("Rcvd : ");
+//	printDecimal(recvd);
+
+	//Enable interrupts
+	IE1 &= ~UTXIE0;
+	IE1 |= URXIE0;
+
+	OS_EXIT_CRITICAL();
 }
-
 /*
  void Enable_XT2(void)
  {
