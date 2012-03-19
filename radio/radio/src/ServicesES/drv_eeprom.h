@@ -3,6 +3,9 @@
 
 //extern
 void eeprom_byte_write(unsigned int address, unsigned char data);
+int eeprom_page_write(unsigned int address, unsigned char *data_buffer);
+unsigned int eeprom_seq_read(unsigned int address, unsigned char * buffer,
+        int size);
 //void eeprom_page_write(unsigned int	start_addr, unsigned char *data, unsigned char size); // TO DO
 unsigned char eeprom_random_read(unsigned int address);
 unsigned char eeprom_current_read(void);
