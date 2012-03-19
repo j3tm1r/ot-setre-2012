@@ -18,7 +18,6 @@
 
 static INT8S 		curVolLvl 	= -1;
 static INT8S 		curFreq 	= -1;
-static INT16U 		curSessionIdx = -1;
 
 static INT16U 		lastTickFreq;
 static INT16U 		lastTickVol;
@@ -36,6 +35,8 @@ extern INT8U 		statLoggerPrio;
 
 extern INT16S 		TI_To_GM_CmdBuf;
 extern INT16S 		GM_To_SL_CmdBuf;
+
+extern INT16U curSessionIdx;
 
 
 void updateStoredData();
@@ -65,11 +66,15 @@ void StatLogger(void *parg) {
 				ReadEEPROM(0, &storIndex, sizeof(storIndex));
 				// TODO /page += 64o
 				curSessionIdx = storIndex.sessionNum;
+				//TODO TEST EEPROM
+				curSessionIdx = 0;
 				storIndex.sessionNum = curSessionIdx + 1;
 				WriteEEPROM(0, &storIndex, sizeof(storIndex));
 
 				// Initialize session data in EEPROM
 				memset(&curSession, 0, sizeof(curSession));
+				//TODO TEST EEPROM
+				curSessionIdx = 1;
 				curSessionAddr = sizeof(StorageIndex) + curSessionIdx * sizeof(Session);
 				WriteEEPROM(curSessionAddr, &curSession, sizeof(curSession));
 
@@ -98,6 +103,7 @@ void updateStoredData() {
 		return;
 	}
 	// Read current session from EEPROM
+	curSessionIdx = 1;
 	curSessionAddr = sizeof(StorageIndex) + curSessionIdx * sizeof(Session);
 	ReadEEPROM(curSessionAddr, &curSession, sizeof(curSession));
 

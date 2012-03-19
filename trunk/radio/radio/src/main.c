@@ -80,6 +80,8 @@ OS_EVENT *GM_To_SL_MsgQ;
 
 INT8U statLoggerPrio;
 
+INT16U curSessionIdx = -1;
+
 OS_CPU_SR  cpu_sr;
 
 /*

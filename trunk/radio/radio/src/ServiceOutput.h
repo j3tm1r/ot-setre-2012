@@ -38,13 +38,14 @@ typedef struct ServiceMsg {
 typedef struct StorageIndex {
 	INT16U dataOffset;
 	INT16U sessionNum;
+
 	//INT16U dummy[2]; // just in case
 } StorageIndex;
 
 // 40o
 typedef struct Session {
-	INT16U timePerFreq[FREQ_NUM];
-	INT16U timePerVolLvl[2];
+	INT32U timePerFreq[FREQ_NUM];
+	INT32U timePerVolLvl[2];
 } Session;
 
 typedef struct Station {
