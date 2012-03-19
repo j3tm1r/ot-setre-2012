@@ -63,17 +63,17 @@ static INT8S currentFreqId = DEFAULT_FREQ_ID;
 static INT8S currentVolLvl = DEFAULT_VOL_LVL;
 
 //
-static char strDefault[] = "VEILLE";
-static char strMRInit[] = "MR_INIT";
-static char strMRFIN[] = "MR_FIN";
+static char strDefault[] 	= 	"B0 radio\nB1 statistics";//"VEILLE";
+//static char strMRInit[] 	= 	"MR_INIT";
+//static char strMRFIN[] 		= 	"MR_FIN";
 
-static char strMRDefault[] = "Radio OT SETRE";
-static char strMRFreq[] = "Prev/Next Freq";
-static char strMRVolume[] = "Current Volume";
-static char strMSNbUtil[] = "Stats Usage";
-static char strMSVolume[] = "Stats Volume";
-static char strMSStation[] = "Stats Channel";
-static char secondLine = '\n';
+static char strMRDefault[] 	= 	"Radio OT SETRE";
+static char strMRFreq[] 	= 	"Prev/Next Freq";
+static char strMRVolume[] 	= 	"Current Volume";
+static char strMSNbUtil[] 	= 	"Stats Usage";
+static char strMSVolume[] 	= 	"Stats Volume";
+static char strMSStation[] 	= 	"Stats Channel";
+static char secondLine 		= 	'\n';
 
 static char printBuffer[N_CHAR_PER_LINE * N_LINE + 2];
 
@@ -99,10 +99,14 @@ extern INT16S GM_To_SL_CmdBuf;
 
 extern Station stationMap[];
 
+extern INT16U curSessionIdx;
+
 static StatMsg statMsg;
 static StorageIndex storIndex;
 static InputCmd *recvData;
 static INT8U err;
+static Session 		curSession;
+static INT16U curSessionAddr;
 
 //------------------------------------------------------ Fonctions privées
 //static type nom ( liste de paramètres )
@@ -175,7 +179,7 @@ void GestionModeStep(INT16U event) {
 				OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
 			}
 
-			PrintScreen(strMRInit);
+			//PrintScreen(strMRInit);
 
 		} else if (event == CMD1) {
 			mode = MS;
@@ -217,7 +221,7 @@ void GestionModeStep(INT16U event) {
 			// Set volume to 0
 			SetVolumeByLvl(0);
 
-			PrintScreen(strMRFIN);
+			//PrintScreen(strMRFIN);
 		} else {
 			// Transfer event to GestionRadio
 			GestionRadio(event);
@@ -393,27 +397,33 @@ void GestionStat(INT16U event) {
 		break;
 	case MS_VOLUME:
 
-		//TODO read EEPROM
-		//TODO Display data
+		//TODO read EEPROM & display data
+		//TODO TEST EEPROM
+		curSessionIdx = 1;
+		curSessionAddr = sizeof(StorageIndex) + curSessionIdx * sizeof(Session);
+		ReadEEPROM(curSessionAddr, &curSession, sizeof(curSession));
 
 		memset(printBuffer, 0, sizeof(printBuffer));
 		strncpy(printBuffer, strMSVolume, strlen(strMSVolume));
 		strncpy(printBuffer + strlen(printBuffer), &secondLine, 1);
 		if (volStateCounter == 0) {
-			strncpy(printBuffer + strlen(printBuffer), "VOL 1-6:   ",
-					strlen("VOL 1-6:   "));
+			strncpy(printBuffer + strlen(printBuffer), "VOL 1-6:",
+					strlen("VOL 1-6:"));
 		} else if (volStateCounter == 1) {
-			strncpy(printBuffer + strlen(printBuffer), "VOL 7-8:   ",
-					strlen("VOL 7-8:   "));
+			strncpy(printBuffer + strlen(printBuffer), "VOL 7-8:",
+					strlen("VOL 7-8:"));
 		}
-		//DecimalToString(...
+		DecimalToString(curSession.timePerVolLvl[currentVolLvl]/100, printBuffer + strlen(printBuffer), 7);
 		PrintScreen(printBuffer);
 
 		break;
 	case MS_STATION:
 
-		//TODO read EEPROM
-		//TODO Display data
+		//TODO read EEPROM & display data
+		//TODO TEST EEPROM
+		curSessionIdx = 1;
+		curSessionAddr = sizeof(StorageIndex) + curSessionIdx * sizeof(Session);
+		ReadEEPROM(curSessionAddr, &curSession, sizeof(curSession));
 
 		//memcpy(stringBuffer, strStation, strlen(strStation));
 		memset(printBuffer, 0, sizeof(printBuffer));
@@ -423,8 +433,8 @@ void GestionStat(INT16U event) {
 		strncpy(printBuffer + strlen(printBuffer),
 				stationMap[freqStateCounter].freqReel,
 				strlen(stationMap[freqStateCounter].freqReel));
-		strncpy(printBuffer + strlen(printBuffer), ":   ", strlen(":   "));
-		//DecimalToString(storIndex.sessionNum, printBuffer+strlen(printBuffer), 7);	//size : N_CHAR_PER_LINE * N_LINE + 2
+		strncpy(printBuffer + strlen(printBuffer), ":", strlen(":"));
+		DecimalToString(curSession.timePerFreq[currentFreqId]/100, printBuffer + strlen(printBuffer), 7);
 		PrintScreen(printBuffer);
 
 		break;
