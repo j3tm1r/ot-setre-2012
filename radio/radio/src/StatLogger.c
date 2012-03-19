@@ -16,32 +16,35 @@
 #include "util/cmdBuffer.h"
 #include "ServiceOutput.h"
 
-static INT8S 		curVolLvl 	= -1;
-static INT8S 		curFreq 	= -1;
+static INT8S curVolLvl = -1;
+static INT8S curFreq = -1;
 
-static INT16U 		lastTickFreq;
-static INT16U 		lastTickVol;
+static INT16U lastTickFreq;
+static INT16U lastTickVol;
 
-static StatMsg 		*recvData;
-static Session 		curSession;
+static StatMsg *recvData;
+static Session curSession;
 static StorageIndex storIndex;
-static InputCmd 	ackCmd;
-static INT8U 		err;
-static INT16U 		curSessionAddr;
+static InputCmd ackCmd;
+static INT8U err;
+static INT16U curSessionAddr;
 
-extern OS_EVENT 	*TI_To_GM_MsgQ;
-extern OS_EVENT 	*GM_To_SL_MsgQ;
-extern INT8U 		statLoggerPrio;
+extern OS_EVENT *TI_To_GM_MsgQ;
+extern OS_EVENT *GM_To_SL_MsgQ;
+extern INT8U statLoggerPrio;
 
-extern INT16S 		TI_To_GM_CmdBuf;
-extern INT16S 		GM_To_SL_CmdBuf;
+extern INT16S TI_To_GM_CmdBuf;
+extern INT16S GM_To_SL_CmdBuf;
 
-extern INT16U curSessionIdx;
-
+extern INT16S curSessionIdx;
 
 void updateStoredData();
 
 void StatLogger(void *parg) {
+
+	// Update store index in EEPROM
+	ReadEEPROM(0, &storIndex, sizeof(storIndex));
+	curSessionIdx = storIndex.sessionNum - 1;	// get last session index
 
 	for (;;) {
 
@@ -66,16 +69,15 @@ void StatLogger(void *parg) {
 				ReadEEPROM(0, &storIndex, sizeof(storIndex));
 				// TODO /page += 64o
 				curSessionIdx = storIndex.sessionNum;
-				//TODO TEST EEPROM
-				curSessionIdx = 0;
+
 				storIndex.sessionNum = curSessionIdx + 1;
 				WriteEEPROM(0, &storIndex, sizeof(storIndex));
 
 				// Initialize session data in EEPROM
 				memset(&curSession, 0, sizeof(curSession));
-				//TODO TEST EEPROM
-				curSessionIdx = 1;
-				curSessionAddr = sizeof(StorageIndex) + curSessionIdx * sizeof(Session);
+
+				curSessionAddr = sizeof(StorageIndex)
+						+ curSessionIdx * sizeof(Session);
 				WriteEEPROM(curSessionAddr, &curSession, sizeof(curSession));
 
 			} else if (recvData != 0 && recvData->msgType == STAT_END) {
@@ -103,20 +105,20 @@ void updateStoredData() {
 		return;
 	}
 	// Read current session from EEPROM
-	curSessionIdx = 1;
+
 	curSessionAddr = sizeof(StorageIndex) + curSessionIdx * sizeof(Session);
 	ReadEEPROM(curSessionAddr, &curSession, sizeof(curSession));
 
 	// Update values
 	// Write back session to EEPROM
 	if (curVolLvl >= 0 && curVolLvl < VOL_NUM - 2) {
-		curSession.timePerVolLvl[0] += ((INT16U) OSTimeGet() - lastTickVol);
+		curSession.timePerVolLvl[0] += (OSTimeGet() - lastTickVol);
 		lastTickVol = OSTimeGet();
 	} else if (curVolLvl >= VOL_NUM - 2 && curVolLvl < VOL_NUM) {
-		curSession.timePerVolLvl[1] += ((INT16U) OSTimeGet() - lastTickVol);
+		curSession.timePerVolLvl[1] += (OSTimeGet() - lastTickVol);
 		lastTickVol = OSTimeGet();
 	}
-	curSession.timePerVolLvl[curFreq] += ((INT16U) OSTimeGet() - lastTickFreq);
+	curSession.timePerFreq[curFreq] += (OSTimeGet() - lastTickFreq);
 	lastTickFreq = OSTimeGet();
 
 	WriteEEPROM(curSessionAddr, &curSession, sizeof(curSession));
