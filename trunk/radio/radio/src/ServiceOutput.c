@@ -79,31 +79,110 @@ void WriteEEPROM(INT16U addr, void *buffer, INT8U size) {
 	OS_EXIT_CRITICAL();
 }
 
+void PRINT_BAR(unsigned char segment, unsigned char etat) {
+    SEL_ON;    
+    if (segment> 8)    {segment=0;}
+    if (etat>1)     {etat=0;}
+    if (etat==1) D_ON;
+    if (etat==0) D_OFF;
+    switch (segment)
+    {
+        case (0): 
+        {    S0_OFF;        //line selection 1/8 (msb) S2 S1 S0 (lsb)
+            S1_OFF;
+            S2_OFF;
+            break;
+        }
+        case (1): 
+        {    S0_ON;        //line selection 1/8 (msb) S2 S1 S0 (lsb)
+            S1_OFF;
+            S2_OFF;
+            break;
+        }
+        case (2): 
+        {    S0_OFF;        //line selection 1/8 (msb) S2 S1 S0 (lsb)
+            S1_ON;
+            S2_OFF;
+            break;
+        }
+        case (3): 
+        {    S0_ON;        //line selection 1/8 (msb) S2 S1 S0 (lsb)
+            S1_ON;
+            S2_OFF;
+            break;
+        }
+        case (4): 
+        {    S0_OFF;        //line selection 1/8 (msb) S2 S1 S0 (lsb)
+            S1_OFF;
+            S2_ON;
+            break;
+        }
+        case (5): 
+        {    S0_ON;        //line selection 1/8 (msb) S2 S1 S0 (lsb)
+            S1_OFF;
+            S2_ON;
+            break;
+        }
+        case (6): 
+        {    S0_OFF;        //line selection 1/8 (msb) S2 S1 S0 (lsb)
+            S1_ON;
+            S2_ON;
+            break;
+        }
+        case (7): 
+        {    S0_ON;        //line selection 1/8 (msb) S2 S1 S0 (lsb)
+            S1_ON;
+            S2_ON;
+            break;
+        }
+    
+        default: break;
+    }
+    SEL_OFF;    //LATCH
+    SEL_ON;    
+}
+void RISE_BAR(void) {
+    unsigned char i=0;
+    unsigned char led_on=1;
+    unsigned char led_off=0;
+    for (i=0; i<8 ;i++)
+    {
+        PRINT_BAR(i,led_on);
+        Delayx100us(200);
+        PRINT_BAR(i,led_off);
+    }
+}
+void FALL_BAR(void) {
+    unsigned char i=0;
+    unsigned char led_on=1;
+    unsigned char led_off=0;
+    for (i=7; i>0 ;i--)
+    {
+        PRINT_BAR(i,led_on);
+        Delayx100us(200);
+        PRINT_BAR(i,led_off);
+    }
+}
+
+
 INT8S SetBargraph(INT8U lvl) {
 
-	if (lvl >= VOL_NUM) {
-		return -1;
-	}
+    if (lvl >= VOL_NUM) {
+        return -1;
+    }
 
-	//Balayage et configuration de chaque LED du Bargraph
-	for (i = 0; i < 8; i++) {
 
-		//Assignation de l'adresse au contrôleur du Bargraph
-		P6OUT &= 0b01110001;
-		P6OUT |= i << 1;
+    for(i=0;i<8;i++)
+    {
+       PRINT_BAR( i, 0);
+    }
+    
+    for(i=0;i<lvl;i++)
+    {
+       PRINT_BAR( i, 1);
+    }    //Balayage et configuration de chaque LED du Bargraph
 
-		//Détermine si D doit être  à 1 ou 0
-		if (i < lvl)
-			P6OUT |= 0x01;
-		else
-			P6OUT &= 0b11111110;
-
-		P6OUT |= 0x80; //Pin Select à 1 pour sélectionner le Bargraph
-		OSTimeDly(1);
-		P6OUT &= 0x7F; //Pin Select à 0 pour désélectionner le Bargraph
-	}
-
-	return 0;
+    return 0;
 }
 
 INT8S setFrequency(INT16U nb) {
