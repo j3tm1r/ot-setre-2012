@@ -6,6 +6,7 @@
  */
 #include <string.h>
 
+#include <os_cpu.h>
 #include "ServiceOutput.h"
 #include "Display.h"
 #include "includes.h"
@@ -23,8 +24,6 @@ static INT16U stationMap[] = { 201, 255, 463, 503, 615, 765, 828 };
 // Volume
 static INT16U volumeMap[] = { 0, 32, 64, 96, 128, 160, 192, 224, 255 };
 
-
-
 // Declarations
 // Services
 void setFrequencyById(INT8U freqId);
@@ -36,40 +35,56 @@ INT8S setBargraph(INT8U cmd);
 // Helpers
 INT8S sendOverSPI(INT8U target, INT16U data, INT8U nbits);
 
-void ServiceOutput(void *parg) {
+extern OS_EVENT *GM_To_SO_MsgQ;
+extern INT16S 	GM_To_SO_CmdBuf;
 
-	OS_EVENT *msgQServiceOutput = (OS_EVENT*) parg;
-	INT8U err;
-	INT16S bufHandle;
-	ServiceMsg* data;
+static INT8U err;
+static ServiceMsg* data;
+static OS_CPU_SR  cpu_sr;
+static INT8U i, j;
+
+void ServiceOutput(void *parg) {
 
 	for (;;) {
 
-		bufHandle = (INT16S) OSQPend(msgQServiceOutput, 0, &err);
-		data = (ServiceMsg *) DeQueue(bufHandle);
+		OSQPend(GM_To_SO_MsgQ, 0, &err);
+		data = (ServiceMsg *) DeQueue(GM_To_SO_CmdBuf);
 		if (data == 0) {
 			continue;
 		}
 
+		OS_ENTER_CRITICAL();
 		switch (data->serviceType) {
 		case SERV_BARGRAPH:
 			setBargraph(data->val); //Test avec valeurs fixes
 			break;
 		case SERV_EEPROM:
-
+			{
+				// Retrieve EEPROM write address
+				INT16U baseAddr = *((INT16U *)data->msg.pBuffer);
+				INT8U *dataToSend = data->msg.pBuffer + sizeof(INT16U);
+				INT16U k;
+				for (k = 0; k < data->msg.size - sizeof(INT16U); k++) {
+//					clearDisplay();
+//					printDecimal(baseAddr);
+//					gotoSecondLine();
+//					printDecimal(dataToSend[k]);
+//					OSTimeDly(100);
+					eeprom_byte_write(baseAddr, dataToSend[k]);
+					++baseAddr;
+				}
+			}
 			break;
 		case SERV_FREQ:
-			setFrequencyById(data->val);
+			setFrequency( stationMap[data->val % FREQ_NUM] );
 			break;
 		case SERV_LCD:
 			clearDisplay();
 			char *str = data->msg.pBuffer;
 			char screenBuffer[N_CHAR_PER_LINE * N_LINE + 2]; // count '\0' and '\n'
 
-			INT8U strLen = strlen(str); //data->msg.size;
-			int i = 0;
-			int j = 0;
-			while (i < strLen + 1) {
+			i = 0; j = 0;
+			while (i < strlen(str) + 1) {
 				if (str[i] == '\n') {
 //						if(i > N_CHAR_PER_LINE) {
 //							// '\n' must be before end of first line
@@ -90,16 +105,30 @@ void ServiceOutput(void *parg) {
 			}
 			break;
 		case SERV_VOLUME:
-			setVolumeByLvl(data->val);
+			if (data->val >= VOL_NUM) {
+				setVolume(VOLUME_CMD, volumeMap[VOL_NUM - 1]);
+			} else {
+				setVolume(VOLUME_CMD, volumeMap[data->val]);
+			}
 			//setBargraph(data->val);
 			break;
 		default:
 			// Error
 			break;
 		}
+		OS_EXIT_CRITICAL();
 
 	}
 
+}
+
+void ReadEEPROM(INT16U addr, void *buffer, INT8U size) {
+
+	OS_ENTER_CRITICAL();
+	for(i = 0; i<size; ++i) {
+		*((INT8U *)buffer + i) = eeprom_random_read(addr+i);
+	}
+	OS_EXIT_CRITICAL();
 }
 
 INT8S setBargraph(INT8U lvl) {
@@ -107,8 +136,6 @@ INT8S setBargraph(INT8U lvl) {
 	if(lvl >= VOL_NUM) {
 		return -1;
 	}
-
-	INT8U i;
 
 	//Balayage et configuration de chaque LED du Bargraph
 	for(i=0;i<8;i++) {
@@ -131,12 +158,6 @@ INT8S setBargraph(INT8U lvl) {
 	return 0;
 }
 
-void setFrequencyById(INT8U freqId) {
-
-	INT16U stationFreq = stationMap[freqId % FREQ_NUM];
-	setFrequency(stationFreq);
-}
-
 INT8S setFrequency(INT16U nb) {
 
 	if (nb > 1023) {
@@ -154,16 +175,6 @@ INT8S setFrequency(INT16U nb) {
 	sendOverSPI(SPI_FREQ, data, 12);
 
 	return 0;
-}
-
-void setVolumeByLvl(INT8U volLvl) {
-	INT16U volume;
-	if (volLvl >= VOL_NUM) {
-		volume = volumeMap[VOL_NUM - 1];
-	} else {
-		volume = volumeMap[volLvl];
-	}
-	setVolume(VOLUME_CMD, volume);
 }
 
 INT8S setVolume(INT8U cmd, INT8U nb) {
@@ -198,11 +209,11 @@ INT8S sendOverSPI(INT8U target, INT16U data, INT8U nbits) {
 	Delayx100us(1);
 	CS_OFF;
 
-	INT8U currentBit;
-	INT8U k = nbits;
-	while (k > 0) {
-		currentBit = (data >> (k - 1)) & 0x1;
-		if (currentBit) {
+	// i // currentBit
+	j = nbits;
+	while (j > 0) {
+		i = (data >> (j - 1)) & 0x1;
+		if (i) {
 			// currentBit = 1
 			P6OUT |= 0x10; // DIN=1 	SCLK=0	 CS=0
 			P6OUT |= 0x20; // SCLK=1
@@ -213,19 +224,12 @@ INT8S sendOverSPI(INT8U target, INT16U data, INT8U nbits) {
 			P6OUT |= 0x20; // SCLK=1
 			P6OUT &= ~0x20; // SCLK=0
 		}
-		--k;
+		--j;
 	}
 
 	// Three state gate : disable output
 	CS_ON;
 	//TODO OSTimeDly delay(200,10);
-
-	/*// Deselect SPI path
-	 if (target == SPI_FREQ) {
-	 SEL_ON;
-	 } else if(target == SPI_VOL) {
-	 SEL_OFF;
-	 }*/
 
 	return 0;
 }
