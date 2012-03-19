@@ -4,6 +4,7 @@
  *  Created on: 28 févr. 2012
  *      Author: mbbadau
  */
+#include <os_cpu.h>
 #include <ucos_ii.h>
 #include <string.h>
 
@@ -15,31 +16,27 @@
 #include "util/cmdBuffer.h"
 #include "ServiceOutput.h"
 
+static INT8S 		curVolLvl 	= -1;
+static INT8S 		curFreq 	= -1;
+static INT16U 		curSessionIdx = -1;
 
-static OS_EVENT *GM_To_SO_MsgQ;
+static INT16U 		lastTickFreq;
+static INT16U 		lastTickVol;
 
-static INT8S curVolLvl = -1;
-static INT8S curFreq = -1;
-static INT16U curSessionIdx = -1;
-
-static INT16U lastTickFreq;
-static INT16U lastTickVol;
-
-static ServiceMsg servMsg;
-static StatMsg *recvData;
-static Session curSession;
+static StatMsg 		*recvData;
+static Session 		curSession;
 static StorageIndex storIndex;
-static InputCmd ackCmd;
-static INT8U err;
+static InputCmd 	ackCmd;
+static INT8U 		err;
+static INT16U 		curSessionAddr;
 
-extern OS_EVENT *TI_To_GM_MsgQ;
-extern OS_EVENT *GM_To_SL_MsgQ;
-extern OS_EVENT *GM_To_SO_MsgQ;
-extern INT8U statLoggerPrio;
+extern OS_EVENT 	*TI_To_GM_MsgQ;
+extern OS_EVENT 	*GM_To_SL_MsgQ;
+extern INT8U 		statLoggerPrio;
 
-extern INT16S 	TI_To_GM_CmdBuf;
-extern INT16S 	GM_To_SL_CmdBuf;
-extern INT16S 	GM_To_SO_CmdBuf;
+extern INT16S 		TI_To_GM_CmdBuf;
+extern INT16S 		GM_To_SL_CmdBuf;
+
 
 void updateStoredData();
 
@@ -47,8 +44,7 @@ void StatLogger(void *parg) {
 
 	for (;;) {
 
-		OSQPend(GM_To_SL_MsgQ,
-				TIMEOUT_SEC * OS_TICKS_PER_SEC, &err);
+		OSQPend(GM_To_SL_MsgQ, TIMEOUT_SEC * OS_TICKS_PER_SEC, &err);
 		if (err == OS_TIMEOUT) {
 			// Update stored data
 			updateStoredData();
@@ -62,39 +58,28 @@ void StatLogger(void *parg) {
 				if (Queue(TI_To_GM_CmdBuf, &ackCmd) == 0) {
 					OSQPost(TI_To_GM_MsgQ, (void *) TI_To_GM_CmdBuf);
 				}
-//				// Update time ref
-//				lastTickFreq = lastTickVol = OSTimeGet();
-//
-//				// Update store index in EEPROM
-//				ReadEEPROM(0, &storIndex, sizeof(storIndex));
-//				// TODO /page += 64o
-//				curSessionIdx = storIndex.sessionNum;
-//				storIndex.sessionNum = curSessionIdx + 1;
-//
-//				servMsg.serviceType = SERV_EEPROM;
-//				servMsg.msg.pBuffer = &storIndex;
-//				servMsg.msg.size = sizeof(storIndex);
-//
-//				if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-//					OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-//				}
-//
-//				// Initialize session data in EEPROM
-//				memset(&curSession, 0, sizeof(curSession));
-//				servMsg.serviceType = SERV_EEPROM;
-//				servMsg.msg.pBuffer = &curSession;
-//				servMsg.msg.size = sizeof(curSession);
-//
-//				if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-//					OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-//				}
+				// Update time ref
+				lastTickFreq = lastTickVol = OSTimeGet();
+
+				// Update store index in EEPROM
+				ReadEEPROM(0, &storIndex, sizeof(storIndex));
+				// TODO /page += 64o
+				curSessionIdx = storIndex.sessionNum;
+				storIndex.sessionNum = curSessionIdx + 1;
+				WriteEEPROM(0, &storIndex, sizeof(storIndex));
+
+				// Initialize session data in EEPROM
+				memset(&curSession, 0, sizeof(curSession));
+				curSessionAddr = sizeof(StorageIndex) + curSessionIdx * sizeof(Session);
+				WriteEEPROM(curSessionAddr, &curSession, sizeof(curSession));
+
 			} else if (recvData != 0 && recvData->msgType == STAT_END) {
 				ackCmd.cmdID = MR_FIN_ACK;
 				if (Queue(TI_To_GM_CmdBuf, &ackCmd) == 0) {
 					OSQPost(TI_To_GM_MsgQ, (void *) TI_To_GM_CmdBuf);
 				}
-//				// Update stored data
-//				updateStoredData();
+				// Update stored data
+				updateStoredData();
 				// Self-suspend
 				OSTaskSuspend(statLoggerPrio);
 
@@ -102,7 +87,7 @@ void StatLogger(void *parg) {
 				// Update stored data
 				curVolLvl = recvData->volumeLvl;
 				curFreq = recvData->freq;
-//				updateStoredData();
+				updateStoredData();
 			}
 		}
 	}
@@ -113,27 +98,20 @@ void updateStoredData() {
 		return;
 	}
 	// Read current session from EEPROM
-	INT16U curSessionAddr = sizeof(StorageIndex)
-			+ curSessionIdx * sizeof(Session);
+	curSessionAddr = sizeof(StorageIndex) + curSessionIdx * sizeof(Session);
 	ReadEEPROM(curSessionAddr, &curSession, sizeof(curSession));
 
 	// Update values
 	// Write back session to EEPROM
 	if (curVolLvl >= 0 && curVolLvl < VOL_NUM - 2) {
-		curSession.timePerVolLvl[0] += ((INT16U)OSTimeGet() - lastTickVol);
+		curSession.timePerVolLvl[0] += ((INT16U) OSTimeGet() - lastTickVol);
 		lastTickVol = OSTimeGet();
 	} else if (curVolLvl >= VOL_NUM - 2 && curVolLvl < VOL_NUM) {
-		curSession.timePerVolLvl[1] += ((INT16U)OSTimeGet() - lastTickVol);
+		curSession.timePerVolLvl[1] += ((INT16U) OSTimeGet() - lastTickVol);
 		lastTickVol = OSTimeGet();
 	}
-	curSession.timePerVolLvl[curFreq] += ((INT16U)OSTimeGet() - lastTickFreq);
+	curSession.timePerVolLvl[curFreq] += ((INT16U) OSTimeGet() - lastTickFreq);
 	lastTickFreq = OSTimeGet();
 
-	servMsg.serviceType = SERV_EEPROM;
-	servMsg.msg.pBuffer = &curSession;
-	servMsg.msg.size = sizeof(curSession);
-
-	if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-		OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-	}
+	WriteEEPROM(curSessionAddr, &curSession, sizeof(curSession));
 }

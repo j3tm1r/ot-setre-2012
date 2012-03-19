@@ -11,10 +11,9 @@
 #include <os_cpu.h>
 
 #define SERV_BARGRAPH	0
-#define SERV_EEPROM		1
-#define SERV_FREQ		2
-#define SERV_LCD		3
-#define SERV_VOLUME		4
+#define SERV_FREQ		1
+#define SERV_LCD		2
+#define SERV_VOLUME		3
 
 // Volume
 #define FREQ_NUM		7
@@ -48,9 +47,17 @@ typedef struct Session {
 	INT16U timePerVolLvl[2];
 } Session;
 
+typedef struct Station {
+	INT16U 	freqCarte;
+	char 	*freqReel;
+} Station;
 
-void ServiceOutput(void *parg);
+void PrintScreen(char *str);
+void SetFreqById(INT16U val);
+void SetVolumeByLvl(INT16U val);
+INT8S SetBargraph(INT8U lvl);
 void ReadEEPROM(INT16U addr, void *buffer, INT8U size);
+void WriteEEPROM(INT16U addr, void *buffer, INT8U size);
 
 
 #endif /* SERVICE_OUTPUT_H_ */

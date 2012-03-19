@@ -36,9 +36,8 @@ int count_int_me;
  */
 
 #define  TI_STK_SIZE                64       /* Size of each task's stacks (# of OS_STK entries)   */
-#define  GM_STK_SIZE                128
-#define  SO_STK_SIZE                160
-#define  SL_STK_SIZE                64
+#define  GM_STK_SIZE                160
+#define  SL_STK_SIZE                100
 
 #define          STATUS_LED_ON      P2OUT &= ~BIT1    //STATUS_LED - P2.1
 #define          STATUS_LED_OFF     P2OUT |= BIT1     //STATUS_LED - P2.1	
@@ -69,20 +68,19 @@ int count_int_me;
 
 static OS_STK StkTraitementInput[TI_STK_SIZE];
 static OS_STK StkGestionMode[GM_STK_SIZE];
-static OS_STK StkServiceOutput[SO_STK_SIZE];
 static OS_STK StkLoggerStat[SL_STK_SIZE];
 
 INT16S ISR_To_TI_CmdBuf;
 INT16S TI_To_GM_CmdBuf;
-INT16S GM_To_SO_CmdBuf;
 INT16S GM_To_SL_CmdBuf;
 
 OS_EVENT *ISR_To_TI_MsgQ;
 OS_EVENT *TI_To_GM_MsgQ;
-OS_EVENT *GM_To_SO_MsgQ;
 OS_EVENT *GM_To_SL_MsgQ;
 
 INT8U statLoggerPrio;
+
+OS_CPU_SR  cpu_sr;
 
 /*
  *********************************************************************************************************
@@ -166,17 +164,14 @@ int main(void) {
 
 	void *ISR_To_TI_Buffer[MSG_Q_SIZE];
 	void *TI_To_GM_Buffer[MSG_Q_SIZE];
-	void *GM_To_SO_Buffer[MSG_Q_SIZE];
 	void *GM_To_SL_Buffer[MSG_Q_SIZE];
 
 	ISR_To_TI_MsgQ = OSQCreate(&ISR_To_TI_Buffer[0], MSG_Q_SIZE);
 	TI_To_GM_MsgQ = OSQCreate(&TI_To_GM_Buffer[0], MSG_Q_SIZE);
-	GM_To_SO_MsgQ = OSQCreate(&GM_To_SO_Buffer[0], MSG_Q_SIZE);
 	GM_To_SL_MsgQ = OSQCreate(&GM_To_SL_Buffer[0], MSG_Q_SIZE);
 
 	ISR_To_TI_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(InputEvent));
 	TI_To_GM_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(InputCmd));
-	GM_To_SO_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(ServiceMsg));
 	GM_To_SL_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(StatMsg));
 
 	INT8U prio = 20;
@@ -189,9 +184,6 @@ int main(void) {
 
 	prio = 9;
 	OSTaskCreate(GestionMode, NULL, &StkGestionMode[GM_STK_SIZE - 1], prio);
-
-	prio = 11;
-	OSTaskCreate(ServiceOutput, NULL, &StkServiceOutput[SO_STK_SIZE - 1], prio);
 
 	clearDisplay();
 	printString("Start OS");
@@ -255,7 +247,7 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 	INT8U err;
 	INT8U P4Buffer;
 	InputEvent msg;
-	OS_CPU_SR cpu_sr = 0;
+	cpu_sr = 0;
 //	ServiceMsg msgV;
 
 	//désactiver les interruptions
@@ -305,7 +297,7 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 interrupt (USART0RX_VECTOR ) TelInterrupt(void) {
 	INT8U recvd;
 	InputEvent msg;
-	OS_CPU_SR cpu_sr = 0;
+	cpu_sr = 0;
 	INT8U err;
 
 	OS_ENTER_CRITICAL(); //save cpu status register locally end restore it when finished
