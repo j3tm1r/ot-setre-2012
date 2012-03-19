@@ -10,7 +10,7 @@
 
 #include    <os_cpu.h>
 
-#define CMD_BUFFER_NMAX 	5
+#define CMD_BUFFER_NMAX 	4
 #define FIFO					// to map OSQueues
 
 INT16S InitCmdBuffer(INT8U nSlot, INT8U slotSize);

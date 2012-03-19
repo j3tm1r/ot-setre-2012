@@ -41,6 +41,9 @@ static void delay_iic(unsigned int a) {
 	}
 }
 
+static OS_CPU_SR cpu_sr;
+
+
 //static void delayx100us_iic(unsigned int b)
 //{
 //	  unsigned int j;
@@ -164,7 +167,7 @@ static int receive_ack(void) {
 
 // Lecture d'un octet � une adresse donn�e
 unsigned char eeprom_random_read(unsigned int address) {
-	//OS_CPU_SR cpu_sr;
+
 
 	unsigned char data = 0;
 	unsigned char addr_hi = 0;
@@ -202,7 +205,6 @@ unsigned char eeprom_random_read(unsigned int address) {
 
 // Lecture d'un octet au pointeur EEPROM
 unsigned char eeprom_current_read(void) {
-	OS_CPU_SR cpu_sr;
 
 	unsigned char data = 0;
 	//unsigned char i = 0;
@@ -223,7 +225,7 @@ unsigned char eeprom_current_read(void) {
 
 // �criture d'un octet � l'adesse sp�cifi�e
 void eeprom_byte_write(unsigned int address, unsigned char data) {
-	OS_CPU_SR cpu_sr;
+
 	unsigned char addr_hi = 0;
 	unsigned char addr_lo = 0;
 	addr_lo = (unsigned char) address & 0xFF; // get LSB
@@ -248,7 +250,7 @@ void eeprom_byte_write(unsigned int address, unsigned char data) {
 }
 
 int eeprom_ack_polling(void) {
-	OS_CPU_SR cpu_sr;
+
 	OS_ENTER_CRITICAL();
 	start(); // start condition
 	write_byte(I2C_ADDR_WRITE); // send ctrl byte (write mode)

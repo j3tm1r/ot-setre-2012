@@ -17,11 +17,6 @@
 #define BUT3	3
 #define BUTERR	4
 
-typedef struct task_TI_Param {
-	OS_EVENT *ISR_To_TI_MsgQ;
-	OS_EVENT *TI_To_GM_MsgQ;
-} task_TI_Param;
-
 enum TI_MsgType {
 	IT_BUTTON, IT_TLC
 };

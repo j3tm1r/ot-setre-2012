@@ -12,23 +12,25 @@
 #include "util/cmdBuffer.h"
 
 extern INT16S TI_To_GM_CmdBuf;
+extern OS_EVENT *ISR_To_TI_MsgQ;
+extern OS_EVENT *TI_To_GM_MsgQ;
+
+extern INT16S 	TI_To_GM_CmdBuf;
+extern INT16S 	ISR_To_TI_CmdBuf;
+
+static InputCmd 	cmd;
+static INT8U 		err;
+static InputEvent 	*event;
 
 void TraitementInput(void *parg) {
-	INT8U err;
-	InputCmd cmd;
-	INT16S bufHandle;
-
-	task_TI_Param *param = (task_TI_Param*) parg;
-	OS_EVENT *ISR_To_TI_MsgQ = param->ISR_To_TI_MsgQ;
-	OS_EVENT *TI_To_GM_MsgQ = param->TI_To_GM_MsgQ;
 
 	for (;;) {
 
-		bufHandle = (INT16S) OSQPend(ISR_To_TI_MsgQ, 0, &err);
-		InputEvent *event = (InputEvent *) DeQueue(bufHandle);
+		OSQPend(ISR_To_TI_MsgQ, 0, &err);
+		event = (InputEvent *) DeQueue(ISR_To_TI_CmdBuf);
 		if (event == 0) {
-			sendToScreen("TI DeQueue error!");
-			continue; // should never happened
+			printString("TI DeQueue error!");
+			continue;	// should never happened
 		}
 
 		switch (event->msgType) {
