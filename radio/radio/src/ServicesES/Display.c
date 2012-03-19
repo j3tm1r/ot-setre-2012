@@ -56,26 +56,19 @@ void printHex(unsigned int Number) {
 	HexBuffer[0] = HexDigit(Number & 0x000f);
 	printString(HexBuffer);
 }
-void printDecimal(int Number) {
+void DecimalToString(INT16U number, char *buffer, INT8U size) {
 	// need to move to long int to account for
 	// negative 32768
-	char DecimalBuffer[7];
-	long lNumber = Number;
-	DecimalBuffer[6] = 0;
-	if (lNumber < 0) {
-		DecimalBuffer[0] = '-';
-		lNumber = -lNumber;
-	} else
-		DecimalBuffer[0] = '+';
-	DecimalBuffer[5] = (lNumber % 10) + '0';
-	lNumber = lNumber / 10;
-	DecimalBuffer[4] = (lNumber % 10) + '0';
-	lNumber = lNumber / 10;
-	DecimalBuffer[3] = (lNumber % 10) + '0';
-	lNumber = lNumber / 10;
-	DecimalBuffer[2] = (lNumber % 10) + '0';
-	lNumber = lNumber / 10;
-	DecimalBuffer[1] = (lNumber % 10) + '0';
+	buffer[6] = '\0';
+	INT8S i;
+	for (i = size-2; i >= 0; --i) {
+		buffer[i] = (number % 10) + '0';
+		number = number / 10;
+	}
+}
+void printDecimal(INT16U Number) {
+	char DecimalBuffer[6];
+	DecimalToString(Number, DecimalBuffer, 6);
 	printString(DecimalBuffer);
 }
 

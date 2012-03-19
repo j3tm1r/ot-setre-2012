@@ -67,7 +67,8 @@ void clearDisplay();
 void gotoSecondLine();
 
 void putch(char c);
-void printDecimal(int Number);
+void DecimalToString(INT16U number, char *buffer, INT8U size);
+void printDecimal(INT16U Number);
 void printHex(unsigned int Number);
 void printString(char *String);
 void printByte(INT8U theByte);

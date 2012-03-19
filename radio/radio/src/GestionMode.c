@@ -67,16 +67,18 @@ static char strDefault[] = "VEILLE";
 static char strMRInit[] = "MR_INIT";
 static char strMRFIN[] = "MR_FIN";
 
-static char strMRDefault[] = "MR_DEFAULT";
-static char strMRFreq[] = "MR_SET_FREQ";
-static char strMRVolume[] = "MR_SET_VOL";
-static char strMSNbUtil[] = "MS_NB_UTIL";
-static char strMSVolume[] = "MS_VOLUME";
-static char strMSStation[] = "MS_STATION";
+static char strMRDefault[] = "Radio OT SETRE";
+static char strMRFreq[] = "Prev/Next Freq";
+static char strMRVolume[] = "Current Volume";
+static char strMSNbUtil[] = "Stats Usage";
+static char strMSVolume[] = "Stats Volume";
+static char strMSStation[] = "Stats Channel";
+static char secondLine = '\n';
+
+static char printBuffer[N_CHAR_PER_LINE * N_LINE + 2];
 
 // Helpers
 char stringBuffer[N_CHAR_PER_LINE * N_LINE + 2];
-
 
 // Declarations
 void GestionModeStep(INT16U event);
@@ -86,25 +88,21 @@ void GestionStat(INT16U event);
 void StatModeStep(INT16U event);
 void ModeVeille();
 
-void sendToScreen(const char *str);
+extern INT16S GM_To_SL_CmdBuf;
 
-extern INT16S 	GM_To_SO_CmdBuf;
-extern INT16S 	GM_To_SL_CmdBuf;
-
-extern INT8U     statLoggerPrio;
+extern INT8U statLoggerPrio;
 extern OS_EVENT *TI_To_GM_MsgQ;
-extern OS_EVENT *GM_To_SO_MsgQ;
 extern OS_EVENT *GM_To_SL_MsgQ;
 
-extern INT16S 	TI_To_GM_CmdBuf;
-extern INT16S 	GM_To_SO_CmdBuf;
-extern INT16S 	GM_To_SL_CmdBuf;
+extern INT16S TI_To_GM_CmdBuf;
+extern INT16S GM_To_SL_CmdBuf;
 
-static ServiceMsg servMsg;
-static StatMsg 	statMsg;
+extern Station stationMap[];
+
+static StatMsg statMsg;
 static StorageIndex storIndex;
 static InputCmd *recvData;
-static INT8U 	err;
+static INT8U err;
 
 //------------------------------------------------------ Fonctions privées
 //static type nom ( liste de paramètres )
@@ -130,7 +128,7 @@ void GestionMode(void *parg) {
 			GestionModeStep(recvData->cmdID);
 		} else {
 			// should not happen !
-			sendToScreen("DeQueue error ! ");
+			PrintScreen("DeQueue error ! ");
 		}
 	}
 
@@ -156,34 +154,28 @@ void GestionModeStep(INT16U event) {
 
 			// Start radio
 			// Set frequency
-//			servMsg.serviceType = SERV_FREQ;
-//			servMsg.val = currentFreqId;
-//			if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-//				OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-//			}
-//
-//			// Set volume
-//			servMsg.serviceType = SERV_VOLUME;
-//			servMsg.val = currentVolLvl;
-//			if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-//				OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-//			}
 
-//			// Send current freq id to logger
-//			statMsg.msgType = STAT_LOG;
-//			statMsg.freq = currentFreqId;
-//			if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
-//				OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
-//			}
-//
-//			// Send current volume level to logger
-//			statMsg.msgType = STAT_LOG;
-//			statMsg.volumeLvl = currentVolLvl;
-//			if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
-//				OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
-//			}
+			SetFreqById(currentFreqId);
 
-			sendToScreen(strMRInit);
+			// Set volume
+
+			SetVolumeByLvl(currentVolLvl);
+
+			// Send current freq id to logger
+			statMsg.msgType = STAT_LOG;
+			statMsg.freq = currentFreqId;
+			if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
+				OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
+			}
+
+			// Send current volume level to logger
+			statMsg.msgType = STAT_LOG;
+			statMsg.volumeLvl = currentVolLvl;
+			if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
+				OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
+			}
+
+			PrintScreen(strMRInit);
 
 		} else if (event == CMD1) {
 			mode = MS;
@@ -195,20 +187,14 @@ void GestionModeStep(INT16U event) {
 		if (event == MR_INIT_ACK) {
 
 			for (i = 0; i < VOL_NUM; i++) {
-				servMsg.serviceType = SERV_BARGRAPH;
-				servMsg.val = i;
-				if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-					OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-				}
+
+				SetBargraph(i);
+
 				OSTimeDly(10);
 			}
 
 			for (i = VOL_NUM - 1; i >= currentVolLvl; i--) {
-				servMsg.serviceType = SERV_BARGRAPH;
-				servMsg.val = i;
-				if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-					OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-				}
+				SetBargraph(i);
 				OSTimeDly(10);
 			}
 
@@ -229,13 +215,9 @@ void GestionModeStep(INT16U event) {
 
 			// Stop radio
 			// Set volume to 0
-			servMsg.serviceType = SERV_VOLUME;
-			servMsg.val = 0;
-			if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-				OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-			}
+			SetVolumeByLvl(0);
 
-			sendToScreen(strMRFIN);
+			PrintScreen(strMRFIN);
 		} else {
 			// Transfer event to GestionRadio
 			GestionRadio(event);
@@ -245,20 +227,14 @@ void GestionModeStep(INT16U event) {
 		if (event == MR_FIN_ACK) {
 
 			for (i = currentVolLvl; i < VOL_NUM; i++) {
-				servMsg.serviceType = SERV_BARGRAPH;
-				servMsg.val = i;
-				if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-					OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-				}
+
+				SetBargraph(i);
 				OSTimeDly(10);
 			}
 
 			for (i = VOL_NUM; i > 0; i--) {
-				servMsg.serviceType = SERV_BARGRAPH;
-				servMsg.val = i - 1;
-				if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-					OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-				}
+
+				SetBargraph(i - 1);
 				OSTimeDly(10);
 			}
 
@@ -286,40 +262,44 @@ void GestionRadio(INT16U event) {
 
 	switch (modeRadio) {
 	case MR_DEFAULT:
-		//memcpy(stringBuffer, strDefault, strlen(strDefault));
-		// TODO print radio and volume information
-		//stringBuffer
-		sendToScreen(strMRDefault);
+
+		// print radio and volume information
+		memset(printBuffer, 0, sizeof(printBuffer));
+		strncpy(printBuffer, strMRDefault, strlen(strMRDefault));
+		strncpy(printBuffer + strlen(printBuffer), &secondLine, 1);
+		strncpy(printBuffer + strlen(printBuffer),
+				stationMap[currentFreqId].freqReel,
+				strlen(stationMap[currentFreqId].freqReel));
+		PrintScreen(printBuffer);
+
+		//PrintScreen(strMRDefault);
+
 		break;
 	case MR_SET_FREQ:
-		if (event == CMD1) {
-			sendToScreen(strMRFreq);
-		}
 		if (event == CMD2) {
 			currentFreqId = (FREQ_NUM + currentFreqId - 1) % FREQ_NUM;
 		} else if (event == CMD3) {
 			currentFreqId = (currentFreqId + 1) % FREQ_NUM;
-		} else {
-			// CMD1
-			break;
 		}
-//		// Set frequency
-//		servMsg.serviceType = SERV_FREQ;
-//		servMsg.val = currentFreqId;
-//		if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-//			OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-//		}
-//		// Send current freq id to logger
-//		statMsg.msgType = STAT_LOG;
-//		statMsg.freq = currentFreqId;
-//		if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
-//			OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
-//		}
+
+		memset(printBuffer, 0, sizeof(printBuffer));
+		strncpy(printBuffer, strMRFreq, strlen(strMRFreq));
+		strncpy(printBuffer + strlen(printBuffer), &secondLine, 1);
+		strncpy(printBuffer + strlen(printBuffer),
+				stationMap[currentFreqId].freqReel,
+				strlen(stationMap[currentFreqId].freqReel));
+		PrintScreen(printBuffer);
+
+		// Set frequency
+		SetFreqById(currentFreqId);
+		// Send current freq id to logger
+		statMsg.msgType = STAT_LOG;
+		statMsg.freq = currentFreqId;
+		if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
+			OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
+		}
 		break;
 	case MR_SET_VOL:
-		if (event == CMD1) {
-			sendToScreen(strMRVolume);
-		}
 
 		if (event == CMD2) {
 			if (currentVolLvl != 0) {
@@ -329,32 +309,28 @@ void GestionRadio(INT16U event) {
 			if (currentVolLvl != VOL_NUM - 1) {
 				currentVolLvl += 1;
 			}
-		} else {
-			// CMD1
-			break;
 		}
-		// Set volume
-		servMsg.serviceType = SERV_VOLUME;
-		servMsg.val = currentVolLvl;
-		if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-			OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-		}
-		// Set bargraph
-		servMsg.serviceType = SERV_BARGRAPH;
-		servMsg.val = currentVolLvl;
-		if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-			OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-		}
-//		// Send current volume level to logger
-//		statMsg.msgType = STAT_LOG;
-//		statMsg.volumeLvl = currentVolLvl;
-//		if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
-//			OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
-//		}
 
-		//memcpy(stringBuffer, strVolume, strlen(strVolume));
-		// TODO print volume information and set bargraph
-		//sendToScreen(strMRVolume);
+		// print volume information and set bargraph
+		memset(printBuffer, 0, sizeof(printBuffer));
+		strncpy(printBuffer, strMRVolume, strlen(strMRVolume));
+		strncpy(printBuffer + strlen(printBuffer), &secondLine, 1);
+		DecimalToString(currentVolLvl, printBuffer + strlen(printBuffer),2); //size : N_CHAR_PER_LINE * N_LINE + 2
+		strncpy(printBuffer + strlen(printBuffer),"/8",	strlen("/8"));
+		PrintScreen(printBuffer);
+
+		// Set volume
+		SetVolumeByLvl(currentVolLvl);
+
+		// Set bargraph
+		SetBargraph(currentVolLvl);
+		// Send current volume level to logger
+		statMsg.msgType = STAT_LOG;
+		statMsg.volumeLvl = currentVolLvl;
+		if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
+			OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
+		}
+
 		break;
 	default:
 		break;
@@ -390,48 +366,66 @@ void GestionStat(INT16U event) {
 
 	if (event == CMD0) {
 
-		sendToScreen("Erasing data...");
+		PrintScreen("Erasing data...");
 
 		memset(&storIndex, 0, sizeof(storIndex));
 		storIndex.dataOffset = sizeof(storIndex);
 		storIndex.sessionNum = 0;
-		servMsg.serviceType = SERV_EEPROM;
-		servMsg.msg.pBuffer = &storIndex;
-		servMsg.msg.size = sizeof(storIndex);
+		WriteEEPROM(0, &storIndex, sizeof(storIndex));
 
-		if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-			OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-		}
-
-		OSTimeDly(OS_TICKS_PER_SEC/4);
-		sendToScreen("Data erased !");
+		OSTimeDly(OS_TICKS_PER_SEC / 4);
+		PrintScreen("Data erased !");
 		OSTimeDly(OS_TICKS_PER_SEC);
 	}
 
 	switch (modeStat) {
 	case MS_NB_UTIL:
 
-		//memcpy(stringBuffer, strNbUtil, strlen(strNbUtil));
-		sendToScreen(strMSNbUtil);
+		ReadEEPROM(0, &storIndex, sizeof(storIndex));
+		memset(printBuffer, 0, sizeof(printBuffer));
+		strncpy(printBuffer, strMSNbUtil, strlen(strMSNbUtil));
+		strncpy(printBuffer + strlen(printBuffer), &secondLine, 1);
+		strncpy(printBuffer + strlen(printBuffer), "Num of uses: ",
+				strlen("Num of uses: "));
+		DecimalToString(storIndex.sessionNum, printBuffer + strlen(printBuffer),4); //size : N_CHAR_PER_LINE * N_LINE + 2
+		PrintScreen(printBuffer);
 
 		break;
 	case MS_VOLUME:
-		volStateCounter = (MS_VOL_SCREEN_NUM + volStateCounter - 1)
-				% MS_VOL_SCREEN_NUM;
+
 		//TODO read EEPROM
 		//TODO Display data
 
-		sendToScreen(strMSVolume);
+		memset(printBuffer, 0, sizeof(printBuffer));
+		strncpy(printBuffer, strMSVolume, strlen(strMSVolume));
+		strncpy(printBuffer + strlen(printBuffer), &secondLine, 1);
+		if (volStateCounter == 0) {
+			strncpy(printBuffer + strlen(printBuffer), "VOL 1-6:   ",
+					strlen("VOL 1-6:   "));
+		} else if (volStateCounter == 1) {
+			strncpy(printBuffer + strlen(printBuffer), "VOL 7-8:   ",
+					strlen("VOL 7-8:   "));
+		}
+		//DecimalToString(...
+		PrintScreen(printBuffer);
 
 		break;
 	case MS_STATION:
-		freqStateCounter = (MS_FREQ_SCREEN_NUM + freqStateCounter - 1)
-				% MS_FREQ_SCREEN_NUM;
+
 		//TODO read EEPROM
 		//TODO Display data
 
 		//memcpy(stringBuffer, strStation, strlen(strStation));
-		sendToScreen(strMSStation);
+		memset(printBuffer, 0, sizeof(printBuffer));
+
+		strncpy(printBuffer, strMSStation, strlen(strMSStation));
+		strncpy(printBuffer + strlen(printBuffer), &secondLine, 1);
+		strncpy(printBuffer + strlen(printBuffer),
+				stationMap[freqStateCounter].freqReel,
+				strlen(stationMap[freqStateCounter].freqReel));
+		strncpy(printBuffer + strlen(printBuffer), ":   ", strlen(":   "));
+		//DecimalToString(storIndex.sessionNum, printBuffer+strlen(printBuffer), 7);	//size : N_CHAR_PER_LINE * N_LINE + 2
+		PrintScreen(printBuffer);
 
 		break;
 	default:
@@ -442,43 +436,55 @@ void GestionStat(INT16U event) {
 
 void ModeVeille() {
 	// LPM
-	sendToScreen(strDefault);
+	PrintScreen(strDefault);
 }
 
 void StatModeStep(INT16U event) {
 	switch (modeStat) {
 	case MS_NB_UTIL:
-		if (event == CMD2) {
+		if (event == CMD3) {
 			modeStat = MS_VOLUME;
-		} else if (event == CMD3) {
+			volStateCounter = 0;
+		} else if (event == CMD2) {
 			modeStat = MS_STATION;
+			freqStateCounter = MS_FREQ_SCREEN_NUM - 1;
 		}
 		break;
 	case MS_VOLUME:
-		if (event == CMD2) {
-			modeStat = MS_STATION;
-		} else if (event == CMD3) {
-			modeStat = MS_NB_UTIL;
+
+		if (event == CMD3) {
+			volStateCounter = (volStateCounter + 1) % MS_VOL_SCREEN_NUM;
+			if (volStateCounter == 0) {
+				modeStat = MS_STATION;
+				freqStateCounter = 0;
+			}
+		} else if (event == CMD2) {
+			volStateCounter = (MS_VOL_SCREEN_NUM + volStateCounter - 1)
+					% MS_VOL_SCREEN_NUM;
+
+			if (volStateCounter == MS_VOL_SCREEN_NUM - 1) {
+				modeStat = MS_NB_UTIL;
+			}
 		}
 		break;
 	case MS_STATION:
-		if (event == CMD2) {
-			modeStat = MS_NB_UTIL;
-		} else if (event == CMD3) {
-			modeStat = MS_VOLUME;
+		if (event == CMD3) {
+			freqStateCounter = (freqStateCounter + 1) % MS_FREQ_SCREEN_NUM;
+			if (freqStateCounter == 0) {
+				modeStat = MS_NB_UTIL;
+			}
+		} else if (event == CMD2) {
+			freqStateCounter = (MS_FREQ_SCREEN_NUM + freqStateCounter - 1)
+					% MS_FREQ_SCREEN_NUM;
+			if (freqStateCounter == MS_FREQ_SCREEN_NUM - 1) {
+
+				modeStat = MS_VOLUME;
+				volStateCounter = MS_VOL_SCREEN_NUM - 1;
+			}
 		}
 		break;
 	default:
 		break;
-	}
-}
-
-void sendToScreen(const char *str) {
-	servMsg.serviceType = SERV_LCD;
-	servMsg.msg.pBuffer = (void *) str;
-	servMsg.msg.size = strlen(str);
-	if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-		OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
 	}
 }
 
