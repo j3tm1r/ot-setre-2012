@@ -229,7 +229,7 @@ unsigned int eeprom_seq_read(unsigned int address, unsigned char * buffer,
     //OS_CPU_SR cpu_sr;
     INT8U i = 0;
 
-    //OS_ENTER_CRITICAL();                // Disable Interrupts
+    OS_ENTER_CRITICAL();                // Disable Interrupts
 
     if (address == 0) address = 0x7FFF;
     eeprom_random_read(address - 1);
@@ -244,7 +244,7 @@ unsigned int eeprom_seq_read(unsigned int address, unsigned char * buffer,
     delay_iic(15); // NACK
     stop(); // stop condition
 
-    //OS_EXIT_CRITICAL();                // Disable Interrupts
+    OS_EXIT_CRITICAL();                // Disable Interrupts
     return i;
 }
 
