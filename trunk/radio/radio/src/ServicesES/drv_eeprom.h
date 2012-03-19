@@ -1,7 +1,6 @@
 #ifndef _DRV_EEPROM_H_
 #define _DRV_EEPROM_H_
 
-
 //extern
 void eeprom_byte_write(unsigned int address, unsigned char data);
 //void eeprom_page_write(unsigned int	start_addr, unsigned char *data, unsigned char size); // TO DO

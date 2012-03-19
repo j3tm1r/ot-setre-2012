@@ -35,9 +35,10 @@ int count_int_me;
  *********************************************************************************************************
  */
 
-#define  TASK_STK_SIZE                64       /* Size of each task's stacks (# of OS_STK entries)   */
-#define  GM_STK_SIZE                  128
-#define  SO_STK_SIZE                  160
+#define  TI_STK_SIZE                64       /* Size of each task's stacks (# of OS_STK entries)   */
+#define  GM_STK_SIZE                128
+#define  SO_STK_SIZE                160
+#define  SL_STK_SIZE                64
 
 #define          STATUS_LED_ON      P2OUT &= ~BIT1    //STATUS_LED - P2.1
 #define          STATUS_LED_OFF     P2OUT |= BIT1     //STATUS_LED - P2.1	
@@ -59,18 +60,17 @@ int count_int_me;
 //Valeur assigné au message en cas d'erreur de lecture pendant les interruptions
 #define InputError		4
 
-#define	MSG_Q_SIZE		5
+#define	MSG_Q_SIZE		3
 /*
  *********************************************************************************************************
  *                                               VARIABLES
  *********************************************************************************************************
  */
 
-static OS_STK StkTraitementInput[TASK_STK_SIZE];
+static OS_STK StkTraitementInput[TI_STK_SIZE];
 static OS_STK StkGestionMode[GM_STK_SIZE];
 static OS_STK StkServiceOutput[SO_STK_SIZE];
-static OS_STK StkLoggerStat[TASK_STK_SIZE];
-static INT16U VolumeTest;
+static OS_STK StkLoggerStat[SL_STK_SIZE];
 
 INT16S ISR_To_TI_CmdBuf;
 INT16S TI_To_GM_CmdBuf;
@@ -81,6 +81,8 @@ OS_EVENT *ISR_To_TI_MsgQ;
 OS_EVENT *TI_To_GM_MsgQ;
 OS_EVENT *GM_To_SO_MsgQ;
 OS_EVENT *GM_To_SL_MsgQ;
+
+INT8U statLoggerPrio;
 
 /*
  *********************************************************************************************************
@@ -100,17 +102,17 @@ interrupt (PORT2_VECTOR) TelInterrupt(void);
 
 int main(void) {
 
-	WDTCTL = WDTCTL_INIT; 	// Init watchdog timer
+	WDTCTL = WDTCTL_INIT; // Init watchdog timer
 
-	P6OUT = P1OUT_INIT; 	// Init output data of port1
-	P6OUT = P1OUT_INIT; 	// Init output data of port2
+	P6OUT = P1OUT_INIT; // Init output data of port1
+	P6OUT = P1OUT_INIT; // Init output data of port2
 
-	P6SEL = P1SEL_INIT; 	// Select port or module -function on port1
-	P6SEL = P2SEL_INIT; 	// Select port or module -function on port2
+	P6SEL = P1SEL_INIT; // Select port or module -function on port1
+	P6SEL = P2SEL_INIT; // Select port or module -function on port2
 
-	P6DIR = 0xFF; 			// Init port direction register of port6
+	P6DIR = 0xFF; // Init port direction register of port6
 
-	P1IES = P1IES_INIT; 	// init port interrupts
+	P1IES = P1IES_INIT; // init port interrupts
 	P2IES = P2IES_INIT;
 
 	P2IE = P2IE_INIT;
@@ -132,15 +134,15 @@ int main(void) {
 	P2IES = 0; //-> savoir si c'est un front montant (0) ou descendant (1)
 	P1IFG = 0;
 	P2IFG = 0;
-	//	il faut utiliser eint(); pour enable global interrupt, P1IE = 1 et P2IE = 1
+	//      il faut utiliser eint(); pour enable global interrupt, P1IE = 1 et P2IE = 1
 	/*Fin initialisation*/
 
 	// Configure port 4 pin 1 (I2C SCL)
-	P4DIR |=  BIT1;
-	P4OUT |=  BIT1;
+	P4DIR |= BIT1;
+	P4OUT |= BIT1;
 
 	// Init buzzer
-	P4SEL  = 0;
+	P4SEL = 0;
 	P4OUT &= ~BIT2;
 	P4OUT &= ~BIT3;
 	P4DIR |= BIT2;
@@ -173,42 +175,29 @@ int main(void) {
 	GM_To_SL_MsgQ = OSQCreate(&GM_To_SL_Buffer[0], MSG_Q_SIZE);
 
 	ISR_To_TI_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(InputEvent));
-	TI_To_GM_CmdBuf  = InitCmdBuffer(MSG_Q_SIZE, sizeof(InputCmd));
-	GM_To_SO_CmdBuf  = InitCmdBuffer(MSG_Q_SIZE, sizeof(ServiceMsg));
-	GM_To_SL_CmdBuf  = InitCmdBuffer(MSG_Q_SIZE, sizeof(StatMsg));
+	TI_To_GM_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(InputCmd));
+	GM_To_SO_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(ServiceMsg));
+	GM_To_SL_CmdBuf = InitCmdBuffer(MSG_Q_SIZE, sizeof(StatMsg));
 
 	INT8U prio = 20;
-	task_TI_Param tiParam;
-	tiParam.ISR_To_TI_MsgQ = ISR_To_TI_MsgQ;
-	tiParam.TI_To_GM_MsgQ = TI_To_GM_MsgQ;
 	prio = 6; // most important priority
-	OSTaskCreate(TraitementInput, (void *) &tiParam,
-			&StkTraitementInput[TASK_STK_SIZE - 1], prio);
+	OSTaskCreate(TraitementInput, NULL, &StkTraitementInput[TI_STK_SIZE - 1],
+			prio);
 
-	task_GM_Param gmParam;
-	gmParam.GM_To_SL_MsgQ = GM_To_SL_MsgQ;
-	gmParam.GM_To_SO_MsgQ = GM_To_SO_MsgQ;
-	gmParam.TI_To_GM_MsgQ = TI_To_GM_MsgQ;
+	statLoggerPrio = prio = 13;
+	OSTaskCreate(StatLogger, NULL, &StkLoggerStat[SL_STK_SIZE - 1], prio);
+
 	prio = 9;
-	OSTaskCreate(GestionMode, (void *) &gmParam,
-			&StkGestionMode[GM_STK_SIZE - 1], prio);
+	OSTaskCreate(GestionMode, NULL, &StkGestionMode[GM_STK_SIZE - 1], prio);
 
 	prio = 11;
-	OSTaskCreate(ServiceOutput, (void *) GM_To_SO_MsgQ,
-			&StkServiceOutput[SO_STK_SIZE - 1], prio);
-
-	task_SL_Param slParam;
-	slParam.GM_To_SL_MsgQ = GM_To_SL_MsgQ;
-	slParam.TI_To_GM_MsgQ = TI_To_GM_MsgQ;
-	prio = 13;
-	OSTaskCreate(StatLogger, (void *) &slParam,
-			&StkLoggerStat[TASK_STK_SIZE - 1], prio);
+	OSTaskCreate(ServiceOutput, NULL, &StkServiceOutput[SO_STK_SIZE - 1], prio);
 
 	clearDisplay();
 	printString("Start OS");
 	count_int_me = 0;
 
-	VolumeTest = 0;
+
 
 	/*
 	 * Configuration for sending data through irda
@@ -219,13 +208,13 @@ int main(void) {
 
 	//Initialize registers
 
-//      BCSCTL2 |= SELS; //select XT2CLK as SMCLK source
-//      BCSCTL2 |= DIVS0;
-//      BCSCTL2 |= DIVS1; //divise SSMCLK par 8 -> réglée à 1MHz
+	//      BCSCTL2 |= SELS; //select XT2CLK as SMCLK source
+	//      BCSCTL2 |= DIVS0;
+	//      BCSCTL2 |= DIVS1; //divise SSMCLK par 8 -> réglée à 1MHz
 
 	U0CTL |= CHAR; // data on 8bits and we keep no parity, one stop bit, , disable listen mode, UART mode, no multi-processor protocol
 	U0TCTL |= SSEL0 | SSEL1; //select SMCLK pour l'IRDA
-	U0RCTL &= ~ ( URXEIE | URXWIE); //disable interrupts on receive erroneous character and wake-up
+	U0RCTL &= ~(URXEIE | URXWIE); //disable interrupts on receive erroneous character and wake-up
 	//Baud Rate 14399
 	U0BR1 = 0x02;
 	U0BR0 = 0x2C; //division of SMCLK by 556
@@ -233,7 +222,6 @@ int main(void) {
 	/*sending data*/
 	//U0CTL |= 0b00011001;
 	//U0TCTL |= 0b00010000;
-
 	//Enable USART module via the MEx SFRs (URXEx and/or UTXEx)
 	ME1 &= ~UTXE0;
 	ME1 |= URXE0;
@@ -248,9 +236,9 @@ int main(void) {
 	/*
 	 * */
 
-
 	P1IE = ~BIT0;
 	eint();
+
 	TACTL |= MC1; /* Start the Timer in Continuous mode. */
 	OSStart();
 	return (0);
@@ -261,7 +249,6 @@ int main(void) {
  *                                            STARTUP TASK
  *********************************************************************************************************
  */
-
 
 interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 
@@ -281,7 +268,7 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 
 //	msgV.serviceType = SERV_FREQ;
 
-	msg.bEvent  = BUTERR;
+	msg.bEvent = BUTERR;
 	msg.msgType = IT_BUTTON;
 	P4Buffer = P4IN;
 
@@ -301,7 +288,7 @@ interrupt (PORT1_VECTOR) ButtInterrupt(void) {
 	//On assigne une valeur "ERREUR" au message, on pourra le traiter de façon particulière
 
 	if (msg.bEvent != BUTERR) {
-		if(Queue(ISR_To_TI_CmdBuf, &msg) == 0) {
+		if (Queue(ISR_To_TI_CmdBuf, &msg) == 0) {
 			err = OSQPost(ISR_To_TI_MsgQ, (void *) ISR_To_TI_CmdBuf);
 		}
 	}
@@ -328,7 +315,7 @@ interrupt (USART0RX_VECTOR ) TelInterrupt(void) {
 	IE1 &= ~URXIE0;
 
 	recvd = U0RXBUF;
-	//	msgV.serviceType = SERV_FREQ;
+	//      msgV.serviceType = SERV_FREQ;
 
 	msg.msgType = IT_TLC;
 	msg.tcEvent = recvd;
@@ -336,9 +323,9 @@ interrupt (USART0RX_VECTOR ) TelInterrupt(void) {
 	if (Queue(ISR_To_TI_CmdBuf, &msg) == 0) {
 		err = OSQPost(ISR_To_TI_MsgQ, (void *) ISR_To_TI_CmdBuf);
 	}
-//	clearDisplay();
-//	printString("Rcvd : ");
-//	printDecimal(recvd);
+//      clearDisplay();
+//      printString("Rcvd : ");
+//      printDecimal(recvd);
 
 	//Enable interrupts
 	IE1 &= ~UTXIE0;
@@ -346,27 +333,4 @@ interrupt (USART0RX_VECTOR ) TelInterrupt(void) {
 
 	OS_EXIT_CRITICAL();
 }
-/*
- void Enable_XT2(void)
- {
- int i;
- volatile int j;
 
- i=1;
- while(i)
- {
- _BIS_SR(OSCOFF);
- BCSCTL1 = 0;            // XT2 is On
- IFG1 &= ~OFIFG;         // Clear the Oscillator Fault interrupt flag.
-
- for(j=0;j<1000;j++);    // Wait for a little bit.
-
- if(!(IFG1 & OFIFG))     // If OFIFG remained cleared we are ready to go.
- {                       // Otherwise repeat the process until it stays cleared.
- i = 0;
- }
- }
-
- BCSCTL2 = 0x88;             // Select XT2CLK for MCLK and SMCLK
- }
- */

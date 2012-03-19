@@ -26,8 +26,6 @@ static INT16U volumeMap[] = { 0, 32, 64, 96, 128, 160, 192, 224, 255 };
 
 // Declarations
 // Services
-void setFrequencyById(INT8U freqId);
-void setVolumeByLvl(INT8U volLvl);
 INT8S setFrequency(INT16U nb);
 INT8S setVolume(INT8U cmd, INT8U nb);
 INT8S setBargraph(INT8U cmd);

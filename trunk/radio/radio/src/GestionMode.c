@@ -9,6 +9,7 @@
 /////////////////////////////////////////////////////////////////  INCLUDE
 //-------------------------------------------------------- Include système
 //------------------------------------------------------ Include personnel
+#include <ucos_ii.h>
 #include <string.h>
 
 #include "GestionMode.h"
@@ -61,10 +62,6 @@ static INT8S freqStateCounter = 0;
 static INT8S currentFreqId = DEFAULT_FREQ_ID;
 static INT8S currentVolLvl = DEFAULT_VOL_LVL;
 
-static OS_EVENT *TI_To_GM_MsgQ;
-static OS_EVENT *GM_To_SO_MsgQ;
-static OS_EVENT *GM_To_SL_MsgQ;
-
 //
 static char strDefault[] = "VEILLE";
 static char strMRInit[] = "MR_INIT";
@@ -78,8 +75,8 @@ static char strMSVolume[] = "MS_VOLUME";
 static char strMSStation[] = "MS_STATION";
 
 // Helpers
-
 char stringBuffer[N_CHAR_PER_LINE * N_LINE + 2];
+
 
 // Declarations
 void GestionModeStep(INT16U event);
@@ -91,8 +88,23 @@ void ModeVeille();
 
 void sendToScreen(const char *str);
 
-extern INT16S GM_To_SO_CmdBuf;
-extern INT16S GM_To_SL_CmdBuf;
+extern INT16S 	GM_To_SO_CmdBuf;
+extern INT16S 	GM_To_SL_CmdBuf;
+
+extern INT8U     statLoggerPrio;
+extern OS_EVENT *TI_To_GM_MsgQ;
+extern OS_EVENT *GM_To_SO_MsgQ;
+extern OS_EVENT *GM_To_SL_MsgQ;
+
+extern INT16S 	TI_To_GM_CmdBuf;
+extern INT16S 	GM_To_SO_CmdBuf;
+extern INT16S 	GM_To_SL_CmdBuf;
+
+static ServiceMsg servMsg;
+static StatMsg 	statMsg;
+static StorageIndex storIndex;
+static InputCmd *recvData;
+static INT8U 	err;
 
 //------------------------------------------------------ Fonctions privées
 //static type nom ( liste de paramètres )
@@ -110,19 +122,10 @@ extern INT16S GM_To_SL_CmdBuf;
 
 void GestionMode(void *parg) {
 
-	task_GM_Param *param = (task_GM_Param*) parg;
-	TI_To_GM_MsgQ = param->TI_To_GM_MsgQ;
-	GM_To_SO_MsgQ = param->GM_To_SO_MsgQ;
-	GM_To_SL_MsgQ = param->GM_To_SL_MsgQ;
-
-	INT8U err;
-	INT16S bufHandle;
-	InputCmd *recvData;
-
 	for (;;) {
 
-		bufHandle = (INT16S) OSQPend(TI_To_GM_MsgQ, 0, &err);
-		recvData = (InputCmd *) DeQueue(bufHandle);
+		OSQPend(TI_To_GM_MsgQ, 0, &err);
+		recvData = (InputCmd *) DeQueue(TI_To_GM_CmdBuf);
 		if (recvData != 0) {
 			GestionModeStep(recvData->cmdID);
 		} else {
@@ -135,14 +138,15 @@ void GestionMode(void *parg) {
 
 void GestionModeStep(INT16U event) {
 
-	ServiceMsg servMsg;
-	StatMsg statMsg;
 	INT8S i;
 
 	switch (mode) {
 	case VEILLE:
 		if (event == CMD0) {
 			mode = MR_INIT;
+
+			// Wake-up stat logger
+			OSTaskResume(statLoggerPrio);
 
 			// Notify stat logger that we enter radio mode
 			statMsg.msgType = STAT_INIT;
@@ -152,32 +156,32 @@ void GestionModeStep(INT16U event) {
 
 			// Start radio
 			// Set frequency
-			servMsg.serviceType = SERV_FREQ;
-			servMsg.val = currentFreqId;
-			if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-				OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-			}
+//			servMsg.serviceType = SERV_FREQ;
+//			servMsg.val = currentFreqId;
+//			if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
+//				OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
+//			}
+//
+//			// Set volume
+//			servMsg.serviceType = SERV_VOLUME;
+//			servMsg.val = currentVolLvl;
+//			if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
+//				OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
+//			}
 
-			// Set volume
-			servMsg.serviceType = SERV_VOLUME;
-			servMsg.val = currentVolLvl;
-			if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-				OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-			}
-
-			// Send current freq id to logger
-			statMsg.msgType = STAT_LOG;
-			statMsg.freq = currentFreqId;
-			if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
-				OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
-			}
-
-			// Send current volume level to logger
-			statMsg.msgType = STAT_LOG;
-			statMsg.volumeLvl = currentVolLvl;
-			if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
-				OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
-			}
+//			// Send current freq id to logger
+//			statMsg.msgType = STAT_LOG;
+//			statMsg.freq = currentFreqId;
+//			if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
+//				OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
+//			}
+//
+//			// Send current volume level to logger
+//			statMsg.msgType = STAT_LOG;
+//			statMsg.volumeLvl = currentVolLvl;
+//			if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
+//				OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
+//			}
 
 			sendToScreen(strMRInit);
 
@@ -278,9 +282,6 @@ void GestionModeStep(INT16U event) {
 
 void GestionRadio(INT16U event) {
 
-	ServiceMsg servMsg;
-	StatMsg statMsg;
-
 	RadioModeStep(event);
 
 	switch (modeRadio) {
@@ -302,64 +303,18 @@ void GestionRadio(INT16U event) {
 			// CMD1
 			break;
 		}
-		// Set frequency
-		servMsg.serviceType = SERV_FREQ;
-		servMsg.val = currentFreqId;
-		if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
-			OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
-		}
-		// Send current freq id to logger
-		statMsg.msgType = STAT_LOG;
-		statMsg.freq = currentFreqId;
-		if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
-			OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
-		}
-
-		// TODO rm
-//		INT8U k = 0;
-//		INT8U byteToSend, recByte;
-//		INT16U adress = 0;
-//		INT8U data[5];
-		/*for (k=0; k < 5; ++k) {
-		 data[k] = k;
-		 }
-
-		 for (k=0; k < 5; ++k) {
-		 byteToSend = ((INT8U *) data)[k];
-		 eeprom_byte_write(adress, byteToSend);
-		 ++adress;
-		 }
-
-		 adress = 0;
-		 for (k=0; k < 5; ++k) {
-		 byteToSend = ((INT8U *) data)[k];
-		 recByte = eeprom_random_read(adress);
-		 clearDisplay();
-		 printString("Val ee : ");
-		 printDecimal(recByte);
-		 ++adress;
-		 }*/
-		//eeprom_byte_write(256, 10);
-//		for (k = 0; k < 30; k++) {
-//			eeprom_byte_write(k, 'A' + k);
-//			//OSTimeDly(10);
+//		// Set frequency
+//		servMsg.serviceType = SERV_FREQ;
+//		servMsg.val = currentFreqId;
+//		if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
+//			OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
 //		}
-		//INT16U adr = 0b1101001011101010;
-
-//		eeprom_byte_write(adr, 'C');
-//		OSTimeDly(OS_TICKS_PER_SEC);
-
-//		for (k = 0; k < 30; k++) {
-//			recByte = eeprom_random_read(k);
-//			OSTimeDly(100);
-//			clearDisplay();
-//			printString("Val ee : ");
-//			printDecimal(recByte);
-//
+//		// Send current freq id to logger
+//		statMsg.msgType = STAT_LOG;
+//		statMsg.freq = currentFreqId;
+//		if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
+//			OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
 //		}
-
-		// TODO print frequency information
-		//sendToScreen(strMRFreq);
 		break;
 	case MR_SET_VOL:
 		if (event == CMD1) {
@@ -390,12 +345,12 @@ void GestionRadio(INT16U event) {
 		if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
 			OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
 		}
-		// Send current volume level to logger
-		statMsg.msgType = STAT_LOG;
-		statMsg.volumeLvl = currentVolLvl;
-		if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
-			OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
-		}
+//		// Send current volume level to logger
+//		statMsg.msgType = STAT_LOG;
+//		statMsg.volumeLvl = currentVolLvl;
+//		if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
+//			OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
+//		}
 
 		//memcpy(stringBuffer, strVolume, strlen(strVolume));
 		// TODO print volume information and set bargraph
@@ -434,14 +389,23 @@ void GestionStat(INT16U event) {
 	StatModeStep(event);
 
 	if (event == CMD0) {
-		// TODO erase data
-		// send data to StatLogger
+
 		sendToScreen("Erasing data...");
-		// TMP
-		OSTimeDly(OS_TICKS_PER_SEC);
+
+		memset(&storIndex, 0, sizeof(storIndex));
+		storIndex.dataOffset = sizeof(storIndex);
+		storIndex.sessionNum = 0;
+		servMsg.serviceType = SERV_EEPROM;
+		servMsg.msg.pBuffer = &storIndex;
+		servMsg.msg.size = sizeof(storIndex);
+
+		if (Queue(GM_To_SO_CmdBuf, &servMsg) == 0) {
+			OSQPost(GM_To_SO_MsgQ, (void *) GM_To_SO_CmdBuf);
+		}
+
+		OSTimeDly(OS_TICKS_PER_SEC/4);
 		sendToScreen("Data erased !");
 		OSTimeDly(OS_TICKS_PER_SEC);
-		// TMP END
 	}
 
 	switch (modeStat) {
@@ -510,7 +474,6 @@ void StatModeStep(INT16U event) {
 }
 
 void sendToScreen(const char *str) {
-	ServiceMsg servMsg;
 	servMsg.serviceType = SERV_LCD;
 	servMsg.msg.pBuffer = (void *) str;
 	servMsg.msg.size = strlen(str);

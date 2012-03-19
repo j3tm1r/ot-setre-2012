@@ -32,12 +32,6 @@
 
 //------------------------------------------------------------------ Types 
 
-typedef struct task_GM_Param {
-	OS_EVENT *TI_To_GM_MsgQ;
-	OS_EVENT *GM_To_SO_MsgQ;
-	OS_EVENT *GM_To_SL_MsgQ;
-} task_GM_Param;
-
 typedef struct InputCmd {
 	INT16U cmdID;
 } InputCmd;

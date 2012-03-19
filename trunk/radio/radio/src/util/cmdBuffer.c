@@ -32,12 +32,13 @@ typedef struct CmdBuffer {
 static INT8U 		requestedSlots [CMD_BUFFER_NMAX];		// Slots are initialized to 0
 static CmdBuffer 	cmdBuffer [CMD_BUFFER_NMAX];
 static INT8U		nCmdBuffer = 0;
+static OS_CPU_SR  cpu_sr;
+
 
 void *GetNextSlot(INT16S cmdBufHandle);
 
 
 INT16S InitCmdBuffer(INT8U nSlot, INT8U slotSize) {
-	OS_CPU_SR  cpu_sr;
 	OS_ENTER_CRITICAL();
 	if(nCmdBuffer == CMD_BUFFER_NMAX) {
 		return -1;
@@ -75,7 +76,6 @@ INT16S InitCmdBuffer(INT8U nSlot, INT8U slotSize) {
 
 void *GetNextSlot(INT16S cmdBufHandle) {
 #ifndef FIFO
-	OS_CPU_SR  cpu_sr;
 	OS_ENTER_CRITICAL();
 
 	if(cmdBufHandle < 0 || cmdBufHandle >= CMD_BUFFER_NMAX
@@ -100,7 +100,6 @@ void *GetNextSlot(INT16S cmdBufHandle) {
 #ifdef FIFO
 
 INT8S Queue(INT16S hdl, void *val) {
-	OS_CPU_SR  cpu_sr;
 	OS_ENTER_CRITICAL();
 	if(hdl < 0 || hdl >= CMD_BUFFER_NMAX
 			|| requestedSlots [hdl] == 0) {
@@ -139,7 +138,6 @@ INT8S Queue(INT16S hdl, void *val) {
 }
 
 void * DeQueue(INT16S hdl) {
-	OS_CPU_SR  cpu_sr;
 	OS_ENTER_CRITICAL();
 	if(hdl < 0 || hdl >= CMD_BUFFER_NMAX ) {
 		return 0;
@@ -161,7 +159,6 @@ void * DeQueue(INT16S hdl) {
 #endif
 
 INT8S DestroyCmdBuffer(INT16S cmdBufHandle) {
-	OS_CPU_SR  cpu_sr;
 	OS_ENTER_CRITICAL();
 	if(cmdBufHandle < 0 || cmdBufHandle >= CMD_BUFFER_NMAX ) {
 		return -1;

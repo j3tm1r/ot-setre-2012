@@ -57,7 +57,7 @@
 #define OS_FLAG_QUERY_EN          0    /*     Include code for OSFlagQuery()                           */
 
 /* -------------------- MESSAGE MAILBOXES --------------------- */
-#define OS_MBOX_EN                1    /* Enable (1) or Disable (0) code generation for MAILBOXES      */
+#define OS_MBOX_EN                0    /* Enable (1) or Disable (0) code generation for MAILBOXES      */
 #define OS_MBOX_ACCEPT_EN         1    /*     Include code for OSMboxAccept()                          */
 #define OS_MBOX_DEL_EN            0    /*     Include code for OSMboxDel()                             */
 #define OS_MBOX_POST_EN           1    /*     Include code for OSMboxPost()                            */
@@ -86,7 +86,7 @@
 #define OS_Q_QUERY_EN             0    /*     Include code for OSQQuery()                              */
 
 /* ------------------------ SEMAPHORES ------------------------ */
-#define OS_SEM_EN                 1    /* Enable (1) or Disable (0) code generation for SEMAPHORES     */
+#define OS_SEM_EN                 0    /* Enable (1) or Disable (0) code generation for SEMAPHORES     */
 #define OS_SEM_ACCEPT_EN          1    /*    Include code for OSSemAccept()                            */
 #define OS_SEM_DEL_EN             0    /*    Include code for OSSemDel()                               */
 #define OS_SEM_QUERY_EN           0    /*    Include code for OSSemQuery()                             */
@@ -100,13 +100,13 @@
 #define OS_TASK_NAME_SIZE         0    /*     Determine the size of a task name                        */
 #define OS_TASK_PROFILE_EN        1    /*     Include variables in OS_TCB for profiling                */
 #define OS_TASK_QUERY_EN          0    /*     Include code for OSTaskQuery()                           */
-#define OS_TASK_SUSPEND_EN        0    /*     Include code for OSTaskSuspend() and OSTaskResume()      */
+#define OS_TASK_SUSPEND_EN        1    /*     Include code for OSTaskSuspend() and OSTaskResume()      */
 #define OS_TASK_SW_HOOK_EN        1    /*     Include code for OSTaskSwHook()                          */
 
 /* --------------------- TIME MANAGEMENT ---------------------- */
 #define OS_TIME_DLY_HMSM_EN       1    /*     Include code for OSTimeDlyHMSM()                         */
 #define OS_TIME_DLY_RESUME_EN     0    /*     Include code for OSTimeDlyResume()                       */
-#define OS_TIME_GET_SET_EN        0    /*     Include code for OSTimeGet() and OSTimeSet()             */
+#define OS_TIME_GET_SET_EN        1    /*     Include code for OSTimeGet() and OSTimeSet()             */
 #define OS_TIME_TICK_HOOK_EN      1    /*     Include code for OSTimeTickHook()                        */
 
 typedef INT16U OS_FLAGS; /* Date type for event flag bits (8, 16 or 32 bits)             */
