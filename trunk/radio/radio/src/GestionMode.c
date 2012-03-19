@@ -63,17 +63,17 @@ static INT8S currentFreqId = DEFAULT_FREQ_ID;
 static INT8S currentVolLvl = DEFAULT_VOL_LVL;
 
 //
-static char strDefault[] 	= 	"B0 radio\nB1 statistics";//"VEILLE";
+static char strDefault[] = "B0 radio\nB1 statistics"; //"VEILLE";
 //static char strMRInit[] 	= 	"MR_INIT";
 //static char strMRFIN[] 		= 	"MR_FIN";
 
-static char strMRDefault[] 	= 	"Radio OT SETRE";
-static char strMRFreq[] 	= 	"Prev/Next Freq";
-static char strMRVolume[] 	= 	"Current Volume";
-static char strMSNbUtil[] 	= 	"Stats Usage";
-static char strMSVolume[] 	= 	"Stats Volume";
-static char strMSStation[] 	= 	"Stats Channel";
-static char secondLine 		= 	'\n';
+static char strMRDefault[] = "Radio OT SETRE";
+static char strMRFreq[] = "Prev/Next Freq";
+static char strMRVolume[] = "Current Volume";
+static char strMSNbUtil[] = "Stats Usage";
+static char strMSVolume[] = "Stats Volume";
+static char strMSStation[] = "Stats Channel";
+static char secondLine = '\n';
 
 static char printBuffer[N_CHAR_PER_LINE * N_LINE + 2];
 
@@ -99,13 +99,15 @@ extern INT16S GM_To_SL_CmdBuf;
 
 extern Station stationMap[];
 
-extern INT16U curSessionIdx;
+extern INT16S curSessionIdx;
+
+void TickToTime(INT32U ticks, char* buffer);
 
 static StatMsg statMsg;
 static StorageIndex storIndex;
 static InputCmd *recvData;
 static INT8U err;
-static Session 		curSession;
+static Session curSession;
 static INT16U curSessionAddr;
 
 //------------------------------------------------------ Fonctions privées
@@ -123,7 +125,7 @@ static INT16U curSessionAddr;
 //---------------------------------------------------- Fonctions publiques
 
 void GestionMode(void *parg) {
-
+	ModeVeille();
 	for (;;) {
 
 		OSQPend(TI_To_GM_MsgQ, 0, &err);
@@ -156,15 +158,6 @@ void GestionModeStep(INT16U event) {
 				OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
 			}
 
-			// Start radio
-			// Set frequency
-
-			SetFreqById(currentFreqId);
-
-			// Set volume
-
-			SetVolumeByLvl(currentVolLvl);
-
 			// Send current freq id to logger
 			statMsg.msgType = STAT_LOG;
 			statMsg.freq = currentFreqId;
@@ -178,9 +171,6 @@ void GestionModeStep(INT16U event) {
 			if (Queue(GM_To_SL_CmdBuf, &statMsg) == 0) {
 				OSQPost(GM_To_SL_MsgQ, (void *) GM_To_SL_CmdBuf);
 			}
-
-			//PrintScreen(strMRInit);
-
 		} else if (event == CMD1) {
 			mode = MS;
 			// Transfer event to GestionStat
@@ -189,18 +179,22 @@ void GestionModeStep(INT16U event) {
 		break;
 	case MR_INIT:
 		if (event == MR_INIT_ACK) {
-
+			//// Start radio
+			// Bargraph animation
 			for (i = 0; i < VOL_NUM; i++) {
-
 				SetBargraph(i);
-
 				OSTimeDly(10);
 			}
-
 			for (i = VOL_NUM - 1; i >= currentVolLvl; i--) {
 				SetBargraph(i);
 				OSTimeDly(10);
 			}
+
+			// Set frequency
+			SetFreqById(currentFreqId);
+
+			// Set volume
+			SetVolumeByLvl(currentVolLvl);
 
 			mode = MR;
 			// Transfer event to GestionRadio
@@ -319,8 +313,8 @@ void GestionRadio(INT16U event) {
 		memset(printBuffer, 0, sizeof(printBuffer));
 		strncpy(printBuffer, strMRVolume, strlen(strMRVolume));
 		strncpy(printBuffer + strlen(printBuffer), &secondLine, 1);
-		DecimalToString(currentVolLvl, printBuffer + strlen(printBuffer),2); //size : N_CHAR_PER_LINE * N_LINE + 2
-		strncpy(printBuffer + strlen(printBuffer),"/8",	strlen("/8"));
+		DecimalToString(currentVolLvl, printBuffer + strlen(printBuffer), 2); //size : N_CHAR_PER_LINE * N_LINE + 2
+		strncpy(printBuffer + strlen(printBuffer), "/8", strlen("/8"));
 		PrintScreen(printBuffer);
 
 		// Set volume
@@ -376,6 +370,7 @@ void GestionStat(INT16U event) {
 		storIndex.dataOffset = sizeof(storIndex);
 		storIndex.sessionNum = 0;
 		WriteEEPROM(0, &storIndex, sizeof(storIndex));
+		curSessionIdx = -1;
 
 		OSTimeDly(OS_TICKS_PER_SEC / 4);
 		PrintScreen("Data erased !");
@@ -391,37 +386,43 @@ void GestionStat(INT16U event) {
 		strncpy(printBuffer + strlen(printBuffer), &secondLine, 1);
 		strncpy(printBuffer + strlen(printBuffer), "Num of uses: ",
 				strlen("Num of uses: "));
-		DecimalToString(storIndex.sessionNum, printBuffer + strlen(printBuffer),4); //size : N_CHAR_PER_LINE * N_LINE + 2
+		DecimalToString(storIndex.sessionNum, printBuffer + strlen(printBuffer),
+				4); //size : N_CHAR_PER_LINE * N_LINE + 2
 		PrintScreen(printBuffer);
 
 		break;
 	case MS_VOLUME:
 
 		//TODO read EEPROM & display data
-		//TODO TEST EEPROM
-		curSessionIdx = 1;
+
 		curSessionAddr = sizeof(StorageIndex) + curSessionIdx * sizeof(Session);
 		ReadEEPROM(curSessionAddr, &curSession, sizeof(curSession));
 
 		memset(printBuffer, 0, sizeof(printBuffer));
 		strncpy(printBuffer, strMSVolume, strlen(strMSVolume));
 		strncpy(printBuffer + strlen(printBuffer), &secondLine, 1);
-		if (volStateCounter == 0) {
-			strncpy(printBuffer + strlen(printBuffer), "VOL 1-6:",
-					strlen("VOL 1-6:"));
-		} else if (volStateCounter == 1) {
-			strncpy(printBuffer + strlen(printBuffer), "VOL 7-8:",
-					strlen("VOL 7-8:"));
+		if (curSessionIdx >= 0) {
+			if (volStateCounter == 0) {
+				strncpy(printBuffer + strlen(printBuffer), "VOL 1-6 ",
+						strlen("VOL 1-6 "));
+			} else if (volStateCounter == 1) {
+				strncpy(printBuffer + strlen(printBuffer), "VOL 7-8 ",
+						strlen("VOL 7-8 "));
+
+			}
+			TickToTime(curSession.timePerVolLvl[volStateCounter], printBuffer);
+
+		} else {
+			strncpy(printBuffer + strlen(printBuffer), "No data",
+					strlen("No data"));
 		}
-		DecimalToString(curSession.timePerVolLvl[currentVolLvl]/100, printBuffer + strlen(printBuffer), 7);
 		PrintScreen(printBuffer);
 
 		break;
 	case MS_STATION:
 
 		//TODO read EEPROM & display data
-		//TODO TEST EEPROM
-		curSessionIdx = 1;
+
 		curSessionAddr = sizeof(StorageIndex) + curSessionIdx * sizeof(Session);
 		ReadEEPROM(curSessionAddr, &curSession, sizeof(curSession));
 
@@ -430,11 +431,16 @@ void GestionStat(INT16U event) {
 
 		strncpy(printBuffer, strMSStation, strlen(strMSStation));
 		strncpy(printBuffer + strlen(printBuffer), &secondLine, 1);
-		strncpy(printBuffer + strlen(printBuffer),
-				stationMap[freqStateCounter].freqReel,
-				strlen(stationMap[freqStateCounter].freqReel));
-		strncpy(printBuffer + strlen(printBuffer), ":", strlen(":"));
-		DecimalToString(curSession.timePerFreq[currentFreqId]/100, printBuffer + strlen(printBuffer), 7);
+		if (curSessionIdx >= 0) {
+			strncpy(printBuffer + strlen(printBuffer),
+					stationMap[freqStateCounter].freqReel,
+					strlen(stationMap[freqStateCounter].freqReel));
+			strncpy(printBuffer + strlen(printBuffer), " ", 1);
+			TickToTime(curSession.timePerFreq[freqStateCounter], printBuffer);
+		} else {
+			strncpy(printBuffer + strlen(printBuffer), "No data",
+					strlen("No data"));
+		}
 		PrintScreen(printBuffer);
 
 		break;
@@ -442,6 +448,19 @@ void GestionStat(INT16U event) {
 		break;
 	}
 
+}
+
+void TickToTime(INT32U ticks, char* buffer) {
+
+	INT16U hours = (INT16U) (ticks /(OS_TICKS_PER_SEC * 3600 ));
+	INT16U mins  = ticks /(OS_TICKS_PER_SEC * 60 ) - hours * 60;
+	INT16U sec   = ticks /(OS_TICKS_PER_SEC) - mins * 60;
+
+	DecimalToString(hours, buffer + strlen(buffer), 3);
+	strncpy(printBuffer + strlen(printBuffer), ":", 1);
+	DecimalToString(mins, buffer + strlen(buffer), 3);
+	strncpy(printBuffer + strlen(printBuffer), ":", 1);
+	DecimalToString(sec, buffer + strlen(buffer), 3);
 }
 
 void ModeVeille() {

@@ -14,7 +14,7 @@
  */
 
 int global_pb_gd = 0;
-int count_int_me;
+
 
 #include <io.h>
 #include <signal.h>
@@ -80,7 +80,7 @@ OS_EVENT *GM_To_SL_MsgQ;
 
 INT8U statLoggerPrio;
 
-INT16U curSessionIdx = -1;
+INT16S curSessionIdx = -1;
 
 OS_CPU_SR  cpu_sr;
 
@@ -151,7 +151,6 @@ int main(void) {
 	InitPortsDisplay();
 	initDisplay();
 	clearDisplay();
-	printString("Starting");
 
 	WDTCTL = WDTPW + WDTHOLD; /* Disable the watchdog timer   */
 
@@ -163,6 +162,9 @@ int main(void) {
 	TACCR0 = 913; /* Load the TACCR0 register. Value must be defined by testing */
 
 	OSInit(); /* Initialize uC/OS-II */
+
+	// Init volume
+	SetVolumeByLvl(0);
 
 	void *ISR_To_TI_Buffer[MSG_Q_SIZE];
 	void *TI_To_GM_Buffer[MSG_Q_SIZE];
@@ -186,12 +188,6 @@ int main(void) {
 
 	prio = 9;
 	OSTaskCreate(GestionMode, NULL, &StkGestionMode[GM_STK_SIZE - 1], prio);
-
-	clearDisplay();
-	printString("Start OS");
-	count_int_me = 0;
-
-
 
 	/*
 	 * Configuration for sending data through irda

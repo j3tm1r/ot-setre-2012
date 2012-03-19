@@ -22,19 +22,6 @@
 #define VOL_NUM		9
 #define DEFAULT_VOL_LVL	3	// [0..8]
 
-// ServiceES asynchrone
-typedef struct ServiceMsg {
-	INT16U serviceType;
-	union {
-		INT16U val;
-		struct {
-			void *pBuffer;
-			INT16U size;
-		} msg;
-	};
-
-} ServiceMsg;
-
 typedef struct StorageIndex {
 	INT16U dataOffset;
 	INT16U sessionNum;
@@ -42,7 +29,7 @@ typedef struct StorageIndex {
 	//INT16U dummy[2]; // just in case
 } StorageIndex;
 
-// 40o
+// 36o
 typedef struct Session {
 	INT32U timePerFreq[FREQ_NUM];
 	INT32U timePerVolLvl[2];
