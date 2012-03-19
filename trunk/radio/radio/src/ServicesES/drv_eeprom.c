@@ -154,16 +154,16 @@ static int receive_ack(void) {
 	}
 }
 
-//static void acknowledge(void)
-//{
-//  SCL_0;
-//  delay_iic(TIMING);
-//  DIR_OUT;
-//  SDA_0;
-//  SCL_1;
-//  delay_iic(TIMING);
-//  SCL_0;
-//}
+static void acknowledge(void)
+{
+  SCL_0;
+  delay_iic(TIMING);
+  DIR_OUT;
+  SDA_0;
+  SCL_1;
+  delay_iic(TIMING);
+  SCL_0;
+}
 
 // Lecture d'un octet � une adresse donn�e
 unsigned char eeprom_random_read(unsigned int address) {
@@ -223,6 +223,31 @@ unsigned char eeprom_current_read(void) {
 	return (data);
 }
 
+
+unsigned int eeprom_seq_read(unsigned int address, unsigned char * buffer,
+        int size) {
+    //OS_CPU_SR cpu_sr;
+    INT8U i = 0;
+
+    //OS_ENTER_CRITICAL();                // Disable Interrupts
+
+    if (address == 0) address = 0x7FFF;
+    eeprom_random_read(address - 1);
+    start(); // send start condition
+    write_byte(I2C_ADDR_READ); // send ctrl byte (read mode)
+    receive_ack(); // wait for ACK
+    for (i = 0; i < size; i++) {
+        buffer[i] = read_byte();
+        acknowledge();
+        delay_iic(TIMING);
+    }
+    delay_iic(15); // NACK
+    stop(); // stop condition
+
+    //OS_EXIT_CRITICAL();                // Disable Interrupts
+    return i;
+}
+
 // �criture d'un octet � l'adesse sp�cifi�e
 void eeprom_byte_write(unsigned int address, unsigned char data) {
 
@@ -247,6 +272,36 @@ void eeprom_byte_write(unsigned int address, unsigned char data) {
 	delay_iic(2000);
 
 	OS_EXIT_CRITICAL();
+}
+
+int eeprom_page_write(unsigned int address, unsigned char *data_buffer) {
+    OS_CPU_SR cpu_sr;
+    unsigned char addr_hi = 0;
+    unsigned char addr_lo = 0;
+    addr_lo = (unsigned char) address & 0xFF; // get LSB
+    addr_hi = (unsigned char) (address >> 8); // get MSB
+    INT8U i = 0;
+    unsigned char data;
+    OS_ENTER_CRITICAL();
+
+    start(); // start condition
+    write_byte(I2C_ADDR_WRITE); // send ctrl byte (write mode)
+    receive_ack(); // wait for ACK
+
+    write_byte(addr_hi);
+    receive_ack();
+    write_byte(addr_lo);
+    receive_ack();
+    for (i = 0; i < 64; i++) {
+        data = data_buffer[i];
+        write_byte(data);
+        receive_ack();
+    }
+    stop();
+    delay_iic(2000*64);
+
+    OS_EXIT_CRITICAL();
+    return i;
 }
 
 int eeprom_ack_polling(void) {
